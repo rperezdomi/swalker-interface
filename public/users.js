@@ -23,6 +23,7 @@ socket.emit('refreshlist');
 var n_session;
 
 socket.on('datasessions', function(datasessions) {
+	console.log(datasessions);
 	var l_rom;
 	var r_rom ;
 	var load;
@@ -88,16 +89,17 @@ socket.on('datasessions', function(datasessions) {
       },
       scales: {
         xAxes: [{
-		/*
-          type: 'time',
-          time: {
-			parser: 'ss',
-			unit: 'second',
-			displayFormats:{
-				second: 'ss'
-			}	
+			type: 'time',
+			time: {
+				parser: 'mm-ss-SS',
+				tooltipFormat: 'HH:mm',
+				displayFormats: {
+					millisecond: 'mm:ss.SSS',
+					second: 'mm:ss',
+					minute: 'mm'
+				}
           },
-		 */
+		 
 		  
 		  
           scaleLabel: {
@@ -172,16 +174,20 @@ socket.on('datasessions', function(datasessions) {
     });
     
     var time_labels = [];
+    console.log(r_rom)
     for (i=0; i< r_rom.length ; i++){
-		var milisegundos = i/100*1000
-		var segundos = milisegundos/1000
-		var minutos = milisegundos/1000/60;
-		//segundos = segundos - minutos*60;
-		//milisegundos = milisegundos - segundos*60;
-		total_time = Math.floor(segundos)
-		ctxrhipInstance.data.labels.push(total_time)
+		// update labels
+		var segundos = Math.trunc(i/100);
+		var milisegundos = Math.trunc((i/100 - segundos)*1000)
+		var minutos = Math.trunc(segundos/60);
+		segundos = segundos - minutos*60; 
+		var label = minutos + '-' + segundos + '-' + milisegundos;
+		if(milisegundos.toString().length == 2){
+			var label = minutos + '-' + segundos + '-0' + milisegundos;
+		}
+		ctxrhipInstance.data.labels.push(label)
 		ctxrhipInstance.data.datasets[0].data.push(r_rom[i])
-		ctxlhipInstance.data.labels.push(total_time)
+		ctxlhipInstance.data.labels.push(label)
 		ctxlhipInstance.data.datasets[0].data.push(l_rom[i])
 	}
 	ctxrhipInstance.update();
@@ -269,8 +275,8 @@ socket.on('datostabla', function(datas) {
             let dt = $('#sessionsList').DataTable();
 			let vars = dt.data().toArray();
 			let checkeds = dt.data().toArray().filter((data) => data.checked);
-			console.log(checkeds[0].idTable_session);
-			n_session = checkeds[0].idTable_session;
+			console.log(checkeds[0].idtable_session);
+			n_session = checkeds[0].idtable_session;
 			
             
             
