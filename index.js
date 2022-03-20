@@ -191,15 +191,33 @@ udpServer_VR.on('connection', function(socket){
 					console.log("leg length sent");
 					});
 				
-			setInterval(function () {
-				if (is_swalker_connected){ 
-					var m = rom_right.toString() + "|" + rom_left.toString() + "|";
-					socket.write(m);
+			var timer = setInterval(function () {
+				if(is_client_connected){
+					if (is_swalker_connected){ 
+						var m = rom_right.toString() + "|" + rom_left.toString() + "|";
+						socket.write(m);
+					}
+				} else{
+					clearInterval(timer)
 				}
 			}, VRSAMPLINGRATE);
 	   }
 	});
+	socket.on('error', function(ex) {
+		console.log(ex);
+		is_client_connected = false;
+	});
+	socket.on('end', function() {
+		console.log('Delsys data ended');
+		is_client_connected = false
+	});
+	socket.on('close', function() {
+		console.log('Delsys data closed');
+		is_client_connected = false
+	});
 });
+
+
 
 
 /////////////////////////////////
@@ -393,7 +411,13 @@ io.on('connection', (socket) => {
 
     // ADD SESSIONS DATA IN DATABASE
     socket.on('addsesiondata', function(data) {
-        
+		/*
+        rom_left_vector = test_rom_left_vector
+        rom_right_vector = test_rom_right_vector
+        load_vector = test_rom_left_vector
+        time_stamp_vector = test_rom_left_vector
+		is_swalker_connected = true;		*/				
+
         console.log("Add session data")
         var sql = "INSERT INTO tabla_sesion (idPaciente, NumberSession, idTerapeuta, gait_velocity, observations) VALUES (?)";
         // Read therapy configuration from conf file
@@ -450,7 +474,7 @@ io.on('connection', (socket) => {
 										var dir_vector = 5;
 									}
 								}    
-																
+										
 								if ((is_swalker_connected & is_delsys_connected)) {
 									
 									insertDataRows = "(" + (sessionID).toString() + "," + (time_stamp_vector[index]).toString() +","+ 
