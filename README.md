@@ -46,7 +46,7 @@ We recommend you to follow the instruction in the official documentation web of 
 
 		sudo node /your_path/swalker-interface/index.js &
 
-**5º - Wireless Access Point**: Configure the raspberry pi as WiFi access point to access the interface from other device’s browsers. We recommend you to follow the raspberry pi official documentation [Setting up a Raspberry Pi as a routed wireless access point](https://www.raspberrypi.com/documentation/computers/configuration.html) in case you are using a Raspberry Pi 4, or [this link](https://pimylifeup.com/raspberry-pi-wireless-access-point/comment-page-1/), in case of Raspberry Pi 3 model.  
+**5º - Wireless Access Point**: Configure the raspberry pi as WiFi access point to access the interface from other device’s browsers. We recommend you to follow the raspberry pi official documentation [Setting up a Raspberry Pi as a routed wireless access point](https://www.raspberrypi.com/documentation/computers/configuration.html) in case you are using a Raspberry Pi 4, or [this link](https://pimylifeup.com/raspberry-pi-wireless-access-point/comment-page-1/), in case of Raspberry Pi 3 model. In this last, avoid steps 16-22.
 
 **6º - Pair Bluetooth sensors**: As last step, you must pair, with the RPi, the Bluetooth devices that you will use with the interface. For this purpose, please, open a terminal and follow the following instructions:
 
