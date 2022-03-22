@@ -42,7 +42,7 @@ We recommend you to follow the instruction in the official documentation web of 
 * **Open** /etc/rc.local:
 
 		$ sudo nano /etc/rc.local
-* At the end of the file **add** the following:
+* At the end of the file (before exit 0) **add** the following:
 
 		sudo node /your_path/swalker-interface/index.js &
 
