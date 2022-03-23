@@ -1068,7 +1068,7 @@ function stopSwalker(){
     .catch((err) => console.log('Error', err))
 }
 
-function hex2a_general(hexx, items, lasthex, is_first_data) {
+function hex2a_general(hexx, lasthex, is_first_data) {
     var hex = hexx.toString();//force conversion
     var message = [];
     var newhex = "";
