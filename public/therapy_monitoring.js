@@ -43,13 +43,8 @@ var numberElements_left;
 
 // EMG variables
 var emg_enabled = false
-var is_muscle_activated = [ false, false, false, false, false, false, false, false]
-var max_amplitude_value = [0,0,0,0,0,0,0,0]
-var emg = [0,0,0,0,0,0,0,0];
-var threshold_errors = [4, 4, 4, 4, 4, 4, 4, 4];    // random code higher than 0
-var threshold_values = [0,0,0,0,0,0,0,0];
-var binary_activation_values = [0,0,0,0,0,0,0,0];
-var max_amplitude_value = [0,0,0,0,0,0,0,0];
+var filtered_emg = [0,0,0,0,0,0,0,0];
+var envelope_emg = [0,0,0,0,0,0,0,0];
 var normalized_value = 0
 var y_activation_values = [40, 20, 0, -20, 40, 20, 0, -20];
 var hidden_emg = true;
@@ -74,11 +69,9 @@ window.onload = function() {
 	//Configuration variables
 
 	//Globals
-	var updateCounter_right = 0;
-	var updateCounter_left = 0;
+	var updateCounter_rom = 0;
 	// tab emg envelope
-	var updateCounter_right_envelope = 0;
-	var updateCounter_left_envelope = 0;
+	var updateCounter_emg = 0;
 
 	// Chart Objects
 	// Joint objects (HIP ROM)
@@ -223,29 +216,6 @@ window.onload = function() {
 				borderWidth: 1.5,
 				pointBorderWidth: [],
 				pointStyle: 'line'
-			},{
-				label: '[S1] Recto Femoral',			// S1: Recto femoral
-				data: 0,
-				fill: false,
-				borderWidth: 1.5,
-				hidden:true,
-				borderColor:'#14540d', 
-				pointBorderWidth: [1.5],
-				pointBorderColor: ['#14540d'],
-				pointBackgroundColor: ['#14540d'],
-				showLine: false
-
-			},{
-				label: '[S2] Biceps Femoral',					// S2: isquitibial
-				data: 0,
-				fill: false,
-				borderWidth: 1.5,
-				hidden:true,
-				borderColor:'#4B0082',
-				pointBorderWidth: [1.5],
-				pointBorderColor: ['#4B0082'],
-				pointBackgroundColor: ['#4B0082'],
-				showLine: false
 			}]
 		},
 		options: Object.assign({}, commonJointsOptions)		
@@ -264,29 +234,6 @@ window.onload = function() {
 				pointBorderWidth: [],
 				pointStyle: 'line'
 			
-			},{
-				label: '[S5] Recto Femoral',			// S5: Recto femoral
-				data: 0,
-				fill: false,
-				borderWidth: 1.5,
-				hidden:true,
-				borderColor:'#14540d',
-				pointBorderWidth: [1.5],
-				pointBorderColor: ['#14540d'],
-				pointBackgroundColor: ['#14540d'],
-				showLine: false
-
-			},{
-				label: '[S6] Biceps Femoral',		// S6: Isquitobial
-				data: 0,
-				fill: false,
-				borderWidth: 1.5,
-				hidden:true,
-				borderColor:'#4B0082',
-				pointBorderWidth: [1.5],
-				pointBorderColor: ['#4B0082'],
-				pointBackgroundColor: ['#4B0082'],
-				showLine: false
 			}]
 		},
 		options: Object.assign({}, commonJointsOptions)    
@@ -455,8 +402,7 @@ window.onload = function() {
 	
 	function empty_envelope_graphs(){
 		if(rendered){
-			updateCounter_left_envelope = 0;
-			updateCounter_right_envelope = 0;
+			updateCounter_emg= 0;
 
 			
 			//reset hip rom labels and datasets
@@ -489,12 +435,10 @@ window.onload = function() {
 		emg_enabled = data.emg_connection_status;
 		emg_data = data.emg;     // json
 		// Avoid errors in case EMG is not connected
-		if ((emg_data.length == 0  || JSON.parse(emg_data).emg == undefined) || (!emg_enabled)) {
-			emg = [0,0,0,0,0,0,0,0];
-			threshold_errors = [4, 4, 4, 4, 4, 4, 4, 4];    // random code higher than 0
-			threshold_values = [0,0,0,0,0,0,0,0];
-			binary_activation_values = [0,0,0,0,0,0,0,0];
-			max_amplitude_value = [0,0,0,0,0,0,0,0];
+		if ((emg_data.length == 0  || JSON.parse(emg_data).emg_filtered == undefined) || (!emg_enabled)) {
+			filtered_emg= [0,0,0,0,0,0,0,0];
+			envelope_emg = [4,4,4,4,4,4,4,4];    
+			
 
 		} else {
 			if (document.getElementById("enable_emg").value == "connecting"){
@@ -502,11 +446,8 @@ window.onload = function() {
 				document.getElementById("enable_emg").innerHTML = "Desconectar EMG";
 				document.getElementById("enable_emg").style.background = "#fd4e4e";
 			}
-			emg = JSON.parse(emg_data).emg;
-			threshold_errors = JSON.parse(emg_data).threshold_errors;
-			threshold_values = JSON.parse(emg_data).threshold_values;
-			binary_activation_values = JSON.parse(emg_data).binary_activation_values;
-			max_amplitude_value = JSON.parse(emg_data).max_emg_values;
+			filtered_emg = emg_data.filtered_emg;
+			envelope_emg = emg_data.envelope_emg; 
 		}
 
 		if (therapy_reestart) {
@@ -543,49 +484,12 @@ window.onload = function() {
 				pushDataValue(rom_right, ctxrhipInstance.data.datasets[0], 0, '#FF2626');
 				pushDataValue(rom_left, ctxlhipInstance.data.datasets[0], 0, '#FF2626');
 			} 
-
-			//emg
-			var upperLeg_binary_activation_values = [binary_activation_values[0], binary_activation_values[1], binary_activation_values[4], binary_activation_values[5]]
-			var upperLeg_max_amplitude_values = [max_amplitude_value[0], max_amplitude_value[1], max_amplitude_value[4], max_amplitude_value[5]]
-			var upperLeg_threshold_errors = [threshold_errors[0], threshold_errors[1], threshold_errors[4], threshold_errors[5]]
-			var upperLeg_y_activation_values = [y_activation_values[0], y_activation_values[1], y_activation_values[4], y_activation_values[5]]
-			var upperLeg_emg = [emg[0], emg[1], emg[4], emg[5]]
-
-			if (emg_enabled){
-
-				for (var i = 0; i < ctx_emg_real_data_objects.length ; i++) {
-					// define current dataset
-					real = ctx_emg_real_data_objects[i];
-
-					// show dataset if it is hidded and the error code is 0
-					if (real.hidden == true & (upperLeg_threshold_errors[i] == 0)) {
-						showDataset(real);
-						
-					} else if (upperLeg_threshold_errors[i] == 1) {
-						hideDataset(real);
-						real.hidden = true;
-					}
-
-					// define colors
-					currentColorList = define_valueColor(i);
-					currentColor, currentWidth = getSampleColorWidth(upperLeg_emg[i], upperLeg_max_amplitude_values[i], currentColorList);
-					// Check muscle activation. If muscle activated, normalize the value up to the maximum one, then update point color. If not, make it transparent.
-					if((upperLeg_binary_activation_values[i] == 1) && (upperLeg_threshold_errors[i] == 0)){	
-						pushDataValue(upperLeg_y_activation_values[i], real, currentWidth, currentColor);
-						
-					}else{
-						pushDataValue(upperLeg_y_activation_values[i], real, 0, "#ff000000");
-					}			
-					
-					 
-				}
-			}
 			
-			if (is_swalker_connected | emg_enabled){
+			if (is_swalker_connected){
 							
 					// update labels
-					var segundos = Math.trunc(updateCounter_left/10);
-					var milisegundos = Math.trunc((updateCounter_left/10 - segundos)*1000)
+					var segundos = Math.trunc(updateCounter_rom/10);
+					var milisegundos = Math.trunc((updateCounter_rom/10 - segundos)*1000);
 					var minutos = Math.trunc(segundos/60);
 					segundos = segundos - minutos*60; 
 					var label = minutos + '-' + segundos + '-' + milisegundos;
@@ -595,7 +499,7 @@ window.onload = function() {
 					
 					
 				// delete first element to keep the graph in movement. PlotSampling data reception: 20Hz --> 2 segundos: 40muestras
-				if((updateCounter_right > 49)){
+				if((updateCounter_rom > 49)){
 					
 					ctxrhipInstance.data.labels.shift();
 					ctxlhipInstance.data.labels.shift();
@@ -615,40 +519,16 @@ window.onload = function() {
 						ctxlhipInstance.data.datasets[0].pointBorderColor.shift();
 					} 
 					
-					if(emg_enabled){
-						// y_value
-						ctxrhipInstance.data.datasets[1].data.shift();
-						ctxlhipInstance.data.datasets[1].data.shift();
-						ctxrhipInstance.data.datasets[2].data.shift();
-						ctxlhipInstance.data.datasets[2].data.shift();
-						// Point width
-						ctxrhipInstance.data.datasets[1].pointBorderWidth.shift();
-						ctxlhipInstance.data.datasets[1].pointBorderWidth.shift();
-						ctxrhipInstance.data.datasets[2].pointBorderWidth.shift();
-						ctxlhipInstance.data.datasets[2].pointBorderWidth.shift();
-						// Background Color
-						ctxrhipInstance.data.datasets[1].pointBackgroundColor.shift();
-						ctxlhipInstance.data.datasets[1].pointBackgroundColor.shift();
-						ctxrhipInstance.data.datasets[2].pointBackgroundColor.shift();
-						ctxlhipInstance.data.datasets[2].pointBackgroundColor.shift();
-						// Border Color
-						ctxrhipInstance.data.datasets[1].pointBorderColor.shift();
-						ctxlhipInstance.data.datasets[1].pointBorderColor.shift();
-						ctxrhipInstance.data.datasets[2].pointBorderColor.shift();
-						ctxlhipInstance.data.datasets[2].pointBorderColor.shift();
-						
-					}
-					
 				} 
 				
 				
 			}	
 			
 		} else {
-			//ROM
+			
+			// ROM
 			ctxlhipInstance.data.labels = ['00:00', '05:00'];
 			ctxrhipInstance.data.labels = ['00:00', '05:00'];			
-			
 			
 		}
 		
@@ -658,8 +538,8 @@ window.onload = function() {
 			if(emg_enabled){
 				//console.log(updateCounter_right_envelope);
 				//update labels envelop
-				var segundos = Math.trunc(updateCounter_left_envelope/10);
-				var milisegundos = (updateCounter_left_envelope/10*1000 - segundos*1000)
+				var segundos = Math.trunc(updateCounter_emg/10);
+				var milisegundos = (updateCounter_emg/10*1000 - segundos*1000)
 				var minutos = Math.trunc(segundos/60);
 				segundos = segundos - minutos*60; 
 				var label = minutos + '-' + segundos + '-' + milisegundos;
@@ -673,17 +553,17 @@ window.onload = function() {
 				ctxgmleftInstance.data.labels.push(label);
 				ctxgmrightInstance.data.labels.push(label);
 				
-				ctxrfrightInstance.data.datasets[0].data.push(emg[0]*1000);
-				ctxbfrightInstance.data.datasets[0].data.push(emg[1]*1000);
-				ctxtarightInstance.data.datasets[0].data.push(emg[2]*1000);
-				ctxgmrightInstance.data.datasets[0].data.push(emg[3]*1000);
-				ctxrfleftInstance.data.datasets[0].data.push(emg[4]*1000);
-				ctxbfleftInstance.data.datasets[0].data.push(emg[5]*1000);
-				ctxtaleftInstance.data.datasets[0].data.push(emg[6]*1000);
-				ctxgmleftInstance.data.datasets[0].data.push(emg[7]*1000);
+				ctxrfrightInstance.data.datasets[0].data.push(envelope_emg[0]*1000);
+				ctxbfrightInstance.data.datasets[0].data.push(envelope_emg[1]*1000);
+				ctxtarightInstance.data.datasets[0].data.push(envelope_emg[2]*1000);
+				ctxgmrightInstance.data.datasets[0].data.push(envelope_emg[3]*1000);
+				ctxrfleftInstance.data.datasets[0].data.push(envelope_emg[4]*1000);
+				ctxbfleftInstance.data.datasets[0].data.push(envelope_emg[5]*1000);
+				ctxtaleftInstance.data.datasets[0].data.push(envelope_emg[6]*1000);
+				ctxgmleftInstance.data.datasets[0].data.push(eevelope_emg[7]*1000);
 		
 				
-				if( updateCounter_right_envelope >  49){
+				if( updateCounter_emg >  49){
 					
 					ctxrfleftInstance.data.labels.shift();
 					ctxrfrightInstance.data.labels.shift();
@@ -720,17 +600,15 @@ window.onload = function() {
 
 		//// update counters and refresh graphs
 		///////////////////////////////////////
-		updateCounter_right ++;
-		updateCounter_left ++;
-		
+		updateCounter_rom ++;
 		
 		// ROM
 		ctxrhipInstance.update();
 		ctxlhipInstance.update();
+		
 		//EMG
 		if(rendered){
-			updateCounter_left_envelope ++;
-			updateCounter_right_envelope ++;
+			updateCounter_emg ++;
 		
 			ctxrfleftInstance.update();
 			ctxrfrightInstance.update();
@@ -1146,8 +1024,7 @@ window.onload = function() {
 	function emptyJointGraphs() {
 		//update counters
 		//updateCount = 0;
-		updateCounter_left = 0;
-		updateCounter_right = 0;
+		updateCounter_rom = 0;
 
 		//reset hip rom labels and datasets
 		ctxrhipInstance.data.labels = [];
@@ -1161,10 +1038,6 @@ window.onload = function() {
 		
 	}
 };
-
-
-
-
 
 // Show modal if click on change page
 function preventChange() {
@@ -1262,13 +1135,6 @@ function sendTraction(socket, direction){
     })
 }
 
-function pushDataValue(value, dataset, border_size, currentColor){
-	dataset.data.push(value);
-	dataset.pointBorderWidth.push(border_size);
-	dataset.pointBackgroundColor.push(currentColor);
-	dataset.pointBorderColor.push(currentColor);
-};
-
 function hideDataset(dataset){
 	dataset.hidden = true;
 }
@@ -1277,76 +1143,5 @@ function showDataset(dataset){
 	dataset.hidden = false;
 }
 
-function define_valueColor(i){
-	// check i parity in order to select the correct dataset. 
-	if( i%2 == 0){
-		// Line colors for each activation level
-		currentColor1 = '#93bf85';
-		currentColor2 = '#6eaa5e';
-		currentColor3 = '#469536';
-		currentColor4 = '#0f6a08';
-		currentColor5 = '#14540d';
 
-	}else{
-		// Line colors for each activation level
-		currentColor1 = '#DDA0DD';
-		currentColor2 = '#DA70D6';
-		currentColor3 =  '#BA55D3';
-		currentColor4 = '#9400D3';
-		currentColor5 = '#4B0082';	
-	}
-
-	currentColorList = [currentColor1, currentColor2, currentColor3, currentColor4, currentColor5]
-	return currentColorList
-
-}
-
-function getSampleColorWidth(current_emg_value, max_value, currentColorList){
-	normalized_value = current_emg_value/max_value;
-	// Activated: Green / purple scales.
-	if (normalized_value < 0.2) {
-		currentColor = currentColorList[0];
-		currentWidth = 3.5;
-
-	} else if (0.2< normalized_value < 0.4) {
-		currentColor = currentColorList[1];
-		currentWidth = 5.5;
-
-	} else if (0.4 < normalized_value < 0.6) {
-		currentColor = currentColorList[2];
-		currentWidth = 7.5;
-
-	} else if (0.6 < normalized_value < 0.8) {
-		currentColor = currentColorList[3];
-		currentWidth = 9.5;
-
-	} else if (normalized_value > 0.8) {
-		currentColor = currentColorList[4];
-		currentWidth = 11;
-	}
-	return currentColor, currentWidth;
-}
-
-
-function absolute_min_value(previous_rom, current_rom, found, nsteps){
-	if(current_rom < 0){
-		if (!found){
-			if (Math.abs(parseFloat(current_rom)) < Math.abs(parseFloat(previous_rom))){
-				found = true;
-				nsteps += 1;
-				previous_rom = 1;
-				console.log(" encontrado!");
-				console.log(current_rom)
-
-			} else {
-				found = false;
-				previous_rom = parseInt(current_rom);
-			}
-		} 
-	} else {
-		found = false
-	}
-
-	return [previous_rom, found, nsteps]
-};
 
