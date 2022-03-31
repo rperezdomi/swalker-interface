@@ -485,7 +485,11 @@ window.onload = function() {
 			var milisegundos = Math.trunc((updateCounter_rom/10 - segundos)*1000);
 			var minutos = Math.trunc(segundos/60);
 			segundos = segundos - minutos*60; 
+			if(Math.trunc(milisegundos.toString().length) < 3){
+					milisegundos = '0' + milisegundos;
+				}
 			var label = minutos + '-' + segundos + '-' + milisegundos;
+
 
 			ctxlhipInstance.data.labels.push(label);
 			ctxrhipInstance.data.labels.push(label);
@@ -532,6 +536,10 @@ window.onload = function() {
 				var milisegundos = (updateCounter_emg/10*1000 - segundos*1000)
 				var minutos = Math.trunc(segundos/60);
 				segundos = segundos - minutos*60; 
+				
+				if(Math.trunc(milisegundos.toString().length) < 3){
+					milisegundos = '0' + milisegundos;
+				}
 				var label = minutos + '-' + segundos + '-' + milisegundos;
 
 				ctxrfleftInstance.data.labels.push(label);
@@ -575,7 +583,6 @@ window.onload = function() {
 				}
 				
 			} else {
-				
 				ctxrfleftInstance.data.labels = ['00:00', '00:01'];
 				ctxrfrightInstance.data.labels = ['00:00', '00:01'];
 				ctxbfleftInstance.data.labels = ['00:00', '00:01'];
@@ -586,7 +593,7 @@ window.onload = function() {
 				ctxgmrightInstance.data.labels = ['00:00', '00:01'];
 			}
 	
-		}
+		} 
 
 		//// update counters and refresh graphs
 		///////////////////////////////////////
@@ -1053,7 +1060,7 @@ socket.on('monitoring:connection_status', (data) => {
 	let device= data.device;
 	let status= data.status;
 	console.log(data);
-	if(device == 'swalker'){
+	if(device == 'sw'){
 		if (status==0){
 			console.log("is con")
 			//change button color and text;
@@ -1061,11 +1068,12 @@ socket.on('monitoring:connection_status', (data) => {
 			document.getElementById("connect_swalker").innerHTML = "Desconectar SWalker";
 			document.getElementById("connect_swalker").style.background = "#4eb14e";
 			is_swalker_connected = true
+			
 		} else {
 			console.log("error connection");
 			//change button color and text;
 			document.getElementById("connect_swalker").value = "off";
-			document.getElementById("connect_swalker").innerHTML = "Re-Conectar SWALKER";
+			document.getElementById("connect_swalker").innerHTML = "Reconectar SWALKER";
 			document.getElementById("connect_swalker").style.background = "#eb0a0a";
 			is_swalker_connected = false;
 		}
@@ -1078,13 +1086,6 @@ socket.on('monitoring:connection_status', (data) => {
 			document.getElementById("enable_emg").innerHTML = "Desconectar EMG";
 			document.getElementById("enable_emg").style.background = "#4eb14e";
 			emg_enabled = true
-		} else if(status == 3 || status == 2 || status == 4){
-			console.log("error connection")
-			//change button color and text;
-			document.getElementById("enable_emg").value = "off";
-			document.getElementById("enable_emg").innerHTML = "Re-Conectar EMG ";
-			document.getElementById("enable_emg").style.background = "#eb0a0a";
-			emg_enabled = false
 		} else if(status == 1){
 			console.log("emg disconnected")
 			//change button color and text;
@@ -1092,7 +1093,14 @@ socket.on('monitoring:connection_status', (data) => {
 			document.getElementById("enable_emg").innerHTML = "Conectar EMG";
 			document.getElementById("enable_emg").style.background = "#eb0a0a";
 			emg_enabled = false
-		}
+		} else if(status <= 4){
+			console.log("error connection")
+			//change button color and text;
+			document.getElementById("enable_emg").value = "off";
+			document.getElementById("enable_emg").innerHTML = "Reconectar EMG ";
+			document.getElementById("enable_emg").style.background = "#eb0a0a";
+			emg_enabled = false
+		} 
 
 	} else if ( device == 'vr'){
 		if (status == 0){
@@ -1105,7 +1113,7 @@ socket.on('monitoring:connection_status', (data) => {
 			console.log("error connection")
 			//change button color and text;
 			document.getElementById("enable_vr").value = "off";
-			document.getElementById("enable_vr").innerHTML = "Re-Conectar VR";
+			document.getElementById("enable_vr").innerHTML = "Reconectar VR";
 			document.getElementById("enable_vr").style.background = "#eb0a0a";
 		}
 	}

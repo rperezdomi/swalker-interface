@@ -1007,12 +1007,27 @@ io.on('connection', (socket) => {
             client_delsys_data.on('error', function(ex) {
                 console.log(ex);
                 connect_delsys = false;
+		socket.emit('monitoring:connection_status', {
+                    device: "emg",
+                    // status--> 0: connect, 1: disconnect, 2: not paired, 3: conn error, 4: conn closed
+                    status: 3
+                }) 
             });
             client_delsys_data.on('end', function() {
                 console.log('Delsys data ended');
+		socket.emit('monitoring:connection_status', {
+                    device: "emg",
+                    // status--> 0: connect, 1: disconnect, 2: not paired, 3: conn error, 4: conn closed
+                    status: 2
+                }) 
             });
             client_delsys_data.on('close', function() {
                 console.log('Delsys data closed');
+		socket.emit('monitoring:connection_status', {
+                    device: "emg",
+                    // status--> 0: connect, 1: disconnect, 2: not paired, 3: conn error, 4: conn closed
+                    status: 4
+                }) 
             });
             
             // AUX Acc data port
