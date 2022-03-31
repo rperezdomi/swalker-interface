@@ -933,6 +933,7 @@ io.on('connection', (socket) => {
 
     // Connect SWalker
     socket.on('monitoring:connect_swalker', function(callbackFn) {
+	console.log(is_swalker_connected);
         connect_bt_device(socket, serial_swalker, is_swalker_connected, "sw");
 
     });
