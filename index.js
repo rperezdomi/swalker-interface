@@ -56,7 +56,7 @@ var lasthex_sw = "";
 // SWalker data reception (bt)
 serial_swalker.on('data', function(data){ 
 	
-	ascii_msg = hex2a_general(data, lasthex_sw, is_first_data[0]);
+    ascii_msg = hex2a_general(data, lasthex_sw, is_first_data[0]);
     let msg_list_sw = ascii_msg[0];
     is_first_data[0] = ascii_msg[1];
     
@@ -112,13 +112,14 @@ serial_swalker.on('closed', function(){
 
 const client_delsys_start = new net.Socket();
 const client_delsys_data = new net.Socket();
-const DELSYS_PC_IP = '192.168.43.10';
+const DELSYS_PC_IP = '192.168.43.9';
 const DELSYS_START_PORT = 30000;
 const DELSYS_DATA_PORT = 30002;
 var is_delsys_connected = false;
 var emg_msg = "";    // var sent to therapy_monitoring.js
 //var emg_binary_activation_vector = [];
 //var emg_activity_vector = [];
+var envelope_emg = []
 
 var received_data = "";
 client_delsys_data.on('data', function(data) {
@@ -130,7 +131,8 @@ client_delsys_data.on('data', function(data) {
             received_data = received_data + datos.charAt(index);
             if (datos.charAt(index) == '}') {
                 emg_msg = received_data;
-                console.log(JSON.parse(emg_msg).emg)
+		envelope_emg = JSON.parse(emg_msg).envelope_emg
+                //console.log(JSON.parse(emg_msg).envelope_emg)
                 received_data = "";
             }
         }
@@ -145,6 +147,33 @@ var tibiaL_accX_vector = [];
 var tibiaR_accX = 0
 var tibiaL_accX = 0;
 var index_channel = 1;
+
+var acc_all_data = [];
+var s1_accX_ = 0;
+var s1_accY = 0;
+var s1_accZ = 0;
+var s2_accX_ = 0;
+var s2_accY = 0;
+var s2_accZ = 0;
+var s3_accX_ = 0;
+var s3_accY = 0;
+var s3_accZ = 0;
+var s4_accX_ = 0;
+var s4_accY = 0;
+var s4_accZ = 0;
+var s5_accX_ = 0;
+var s5_accY = 0;
+var s5_accZ = 0;
+var s6_accX_ = 0;
+var s6_accY = 0;
+var s6_accZ = 0;
+var s7_accX_ = 0;
+var s7_accY = 0;
+var s7_accZ = 0;
+var s8_accX_ = 0;
+var s8_accY = 0;
+var s8_accZ = 0;
+
 client_delsys_acc.on('data', function(msg) {
     var len = Buffer.byteLength(msg)
     index_channel = decodeFloat(msg, index_channel);
@@ -164,6 +193,10 @@ client_delsys_acc.on('data', function(msg) {
 		rom_right_vector.push(parseFloat(rom_right-rom_right_calibration));
 		load_vector.push((parseFloat(load)/global_patiente_weight)*100);
 		direction_vector.push(direction_char);
+		
+		// acc
+		acc_all_data.push([s1_accX, s1_accY, s1_accZ, s2_accX, s2_accY, s2_accZ, s3_accX, s3_accY, s3_accZ, s4_accX, s4_accY, s4_accZ, s5_accX, s5_accY, s5_accZ, s6_accX, s6_accY, s6_accZ,s7_accX, s7_accY, s7_accZ, s8_accX, s8_accY, s8_accZ])
+				    
 	}
     
 });
@@ -177,25 +210,31 @@ udpServer_VR.listen(41235);
 var is_client_connected = false;
 var vr_ready = false; 
 
+fs.readFile(therapyConfigPath, (err, data) => {
+    if (err) throw err;
+    var config = JSON.parse(data);
+    console.log(config)
+    patient_leg_length = config.leg_length;
+});
+
 udpServer_VR.on('connection', function(socket){
 	socket.nickname = "conVR";
 	var clientname = socket.nickname;
 	sockets[clientname] = socket;
 
-	console.log('a new connection on 41234 (VR)');
+	console.log('a new connection on 41235 (VR)');
 	is_client_connected = true;
 	socket.on('data',function(data){
 		console.log(data.toString());
 		if (data.toString() == "#ready"){
-			socket.write(patient_leg_length.toString(), function(){
-					console.log("leg length sent");
-					});
-				
+			
 			var timer = setInterval(function () {
 				if(is_client_connected){
-					if (is_swalker_connected){ 
-						var m = rom_right.toString() + "|" + rom_left.toString() + "|";
-						socket.write(m);
+					
+					is_swalker_connected = true;
+					if(is_swalker_connected){
+					    var json_msg = {rom: [rom_right, rom_left], emg: envelope_emg, leg: parseInt(patient_leg_length)}
+					    socket.write(JSON.stringify(json_msg))
 					}
 				} else{
 					clearInterval(timer)
@@ -208,11 +247,11 @@ udpServer_VR.on('connection', function(socket){
 		is_client_connected = false;
 	});
 	socket.on('end', function() {
-		console.log('Delsys data ended');
+		console.log('VR data ended');
 		is_client_connected = false
 	});
 	socket.on('close', function() {
-		console.log('Delsys data closed');
+		console.log('VR data closed');
 		is_client_connected = false
 	});
 });
@@ -429,100 +468,144 @@ io.on('connection', (socket) => {
             var IDs = terapist_id + patient_id
             con.query(IDs , [1,2], function (err, result) {
                 if (err) throw err;
+		console.log(result)
                 patient_id = result[1][0].idtabla_pacientes;
                 terapist_id = result[0][0].idtabla_terapeutas;
                 patient_leg_length = config.leg_length;
                 var n_session = "SELECT COUNT(NumberSession) AS count from tabla_sesion WHERE idPaciente =" + patient_id + ";"
                 con.query(n_session, function (err, result) {
-					if (err) throw err;
-					n_session = result[0].count +1;
-			
-					var sessionConfig = [patient_id, n_session, terapist_id, config.gait_velocity, config.observations];
-					
-					var surgery = config.surgery;
-					con.query(sql,[sessionConfig], function (err, result) {
-						if (err) throw err;
-						// Save Data of the session
-						var sessionID = "SELECT idtable_session from tabla_sesion ORDER BY idtable_session DESC LIMIT 1;";
-						con.query(sessionID , function (err, sessionID) {
-							if (err) throw err;
-							// Get last session ID
-							sessionID = sessionID[0].idtable_session;
-							// Prepare joints angles data of the last session
-							var insertDataRows = ""
-							if (is_swalker_connected){
-								var total_length = rom_right_vector.length;
-							} else if (is_delsys_connected){
-								var total_length = tibiaL_accX_vector.length;
-								//var total_length = emg_activity_vector.length;
-							} 
-							console.log(total_length)
-							
-							for (let index = 0; index < total_length; index++) {
-								if(is_swalker_connected){
-									if (direction_vector[index] == 's'){
-										var dir_vector =  0;
-									} else if (direction_vector[index] == 'b'){
-										var dir_vector = 1;
-									} else if (direction_vector[index] == 'f'){
-										var dir_vector = 2;
-									} else if (direction_vector[index] == 'r'){
-										var dir_vector = 3;
-									} else if (direction_vector[index] == 'l'){
-										var dir_vector = 4;
-									} else {
-										var dir_vector = 5;
-									}
-								}    
-										
-								if ((is_swalker_connected & is_delsys_connected)) {
-									
-									insertDataRows = "(" + (sessionID).toString() + "," + (time_stamp_vector[index]).toString() +","+ 
-													(rom_left_vector[index]).toString() + "," + (rom_right_vector[index]).toString()  + "," + (load_vector[index]).toString() + "," + (dir_vector).toString() +  "," + 
-													//(emg_activity_vector[index][0]).toString() + "," + (emg_binary_activation_vector[index][0]).toString() + "," + (emg_activity_vector[index][1]).toString() + "," + (emg_binary_activation_vector[index][1]).toString() +  "," + (emg_activity_vector[index][2]).toString()  + "," + (emg_binary_activation_vector[index][2]).toString()+  "," + (emg_activity_vector[index][3]).toString()  + "," + (emg_binary_activation_vector[index][3]).toString() +  "," + (emg_activity_vector[index][4]).toString()  + "," + (emg_binary_activation_vector[index][4]).toString() +  "," + (emg_activity_vector[index][5]).toString()  + "," + (emg_binary_activation_vector[index][5]).toString() +  "," + (emg_activity_vector[index][6]).toString()  + "," + (emg_binary_activation_vector[index][6]).toString()+  "," + (emg_activity_vector[index][7]).toString()  + "," + (emg_binary_activation_vector[index][7]).toString() + 
-													tibiaL_accX_vector[index].toString() + "," + tibiaR_accX_vector[index].toString() +  ");"
-									//var sql = "INSERT INTO data_sessions (idSesion, Date, left_hip, right_hip, weight_gauge, direction, emg_muscle_activity_s1,  muscle_binary_activation_s1, emg_muscle_activity_s2,  muscle_binary_activation_s2, emg_muscle_activity_s3,  muscle_binary_activation_s3,  emg_muscle_activity_s4,  muscle_binary_activation_s4,  emg_muscle_activity_s5,  muscle_binary_activation_s5, emg_muscle_activity_s6,  muscle_binary_activation_s6, emg_muscle_activity_s7,  muscle_binary_activation_s7, emg_muscle_activity_s8, muscle_binary_activation_s8, accX_s7, accY_s7, accZ_s7, accX_s3, accY_s3, accZ_s3) VALUES " + insertDataRows;
-									var sql = "INSERT INTO data_sessions (idSesion, Date, left_hip, right_hip, weight_gauge, direction, accX_s7, accX_s3) VALUES " + insertDataRows;
-									
-									
-								
-								
-								} else if(is_delsys_connected){
-								
-									// emg connected. No swalker.
-									insertDataRows = "(" + (sessionID).toString() + "," + (time_stamp_vector[index]).toString() +","+ 
-													//(emg_activity_vector[index][0]).toString() + "," + (emg_binary_activation_vector[index][0]).toString() + "," + (emg_activity_vector[index][1]).toString() + "," + (emg_binary_activation_vector[index][1]).toString() +  "," + (emg_activity_vector[index][2]).toString()  + "," + (emg_binary_activation_vector[index][2]).toString()+  "," + (emg_activity_vector[index][3]).toString()  + "," + (emg_binary_activation_vector[index][3]).toString() +  "," + (emg_activity_vector[index][4]).toString()  + "," + (emg_binary_activation_vector[index][4]).toString() +  "," + (emg_activity_vector[index][5]).toString()  + "," + (emg_binary_activation_vector[index][5]).toString() +  "," + (emg_activity_vector[index][6]).toString()  + "," + (emg_binary_activation_vector[index][6]).toString()+  "," + (emg_activity_vector[index][7]).toString()  + "," + (emg_binary_activation_vector[index][7]).toString() + 
-													tibiaL_accX_vector[index].toString() + "," + tibiaR_accX_vector[index].toString() +  ");"
+				    if (err) throw err;
+				    n_session = result[0].count +1;
+		    
+				    var sessionConfig = [patient_id, n_session, terapist_id, config.gait_velocity, config.observations];
+				    
+				    var surgery = config.surgery;
+				    con.query(sql,[sessionConfig], function (err, result) {
+					    if (err) throw err;
+					    // Save Data of the session
+					    var sessionID = "SELECT idtable_session from tabla_sesion ORDER BY idtable_session DESC LIMIT 1;";
+					    con.query(sessionID , function (err, sessionID) {
+						    if (err) throw err;
+						    // Get last session ID
+						    sessionID = sessionID[0].idtable_session;
+						    // Prepare joints angles data of the last session
+						    var insertDataRows = ""
+						    if (is_swalker_connected){
+							    var total_length = rom_right_vector.length;
+						    } else if (is_delsys_connected){
+							    var total_length = tibiaL_accX_vector.length;
+							    //var total_length = emg_activity_vector.length;
+						    } 
+						    
+						    for (let index = 0; index < total_length; index++) {
+							    if(is_swalker_connected){
+								    if (direction_vector[index] == 's'){
+									    var dir_vector =  0;
+								    } else if (direction_vector[index] == 'b'){
+									    var dir_vector = 1;
+								    } else if (direction_vector[index] == 'f'){
+									    var dir_vector = 2;
+								    } else if (direction_vector[index] == 'r'){
+									    var dir_vector = 3;
+								    } else if (direction_vector[index] == 'l'){
+									    var dir_vector = 4;
+								    } else {
+									    var dir_vector = 5;
+								    }
+							    }    
+									    
+							    if ((is_swalker_connected & is_delsys_connected)) {
+								    
+								    insertDataRows = "(" + (sessionID).toString() + "," + (time_stamp_vector[index]).toString() +","+ 
+												    (rom_left_vector[index]).toString() + "," + (rom_right_vector[index]).toString()  + "," + (load_vector[index]).toString() + "," + (dir_vector).toString() +  "," + 
+												    //(emg_activity_vector[index][0]).toString() + "," + (emg_binary_activation_vector[index][0]).toString() + "," + (emg_activity_vector[index][1]).toString() + "," + (emg_binary_activation_vector[index][1]).toString() +  "," + (emg_activity_vector[index][2]).toString()  + "," + (emg_binary_activation_vector[index][2]).toString()+  "," + (emg_activity_vector[index][3]).toString()  + "," + (emg_binary_activation_vector[index][3]).toString() +  "," + (emg_activity_vector[index][4]).toString()  + "," + (emg_binary_activation_vector[index][4]).toString() +  "," + (emg_activity_vector[index][5]).toString()  + "," + (emg_binary_activation_vector[index][5]).toString() +  "," + (emg_activity_vector[index][6]).toString()  + "," + (emg_binary_activation_vector[index][6]).toString()+  "," + (emg_activity_vector[index][7]).toString()  + "," + (emg_binary_activation_vector[index][7]).toString() + 
+												    tibiaL_accX_vector[index].toString() + "," + tibiaR_accX_vector[index].toString() +  ");"
+								    //var sql = "INSERT INTO data_sessions (idSesion, Date, left_hip, right_hip, weight_gauge, direction, emg_muscle_activity_s1,  muscle_binary_activation_s1, emg_muscle_activity_s2,  muscle_binary_activation_s2, emg_muscle_activity_s3,  muscle_binary_activation_s3,  emg_muscle_activity_s4,  muscle_binary_activation_s4,  emg_muscle_activity_s5,  muscle_binary_activation_s5, emg_muscle_activity_s6,  muscle_binary_activation_s6, emg_muscle_activity_s7,  muscle_binary_activation_s7, emg_muscle_activity_s8, muscle_binary_activation_s8, accX_s7, accY_s7, accZ_s7, accX_s3, accY_s3, accZ_s3) VALUES " + insertDataRows;
+								    var sql = "INSERT INTO data_sessions (idSesion, Date, left_hip, right_hip, weight_gauge, direction, accX_s7, accX_s3) VALUES " + insertDataRows;
+								    
+								    
+							    
+							    
+							    } else if(is_delsys_connected){
+							    
+								    // emg connected. No swalker.
+								    insertDataRows = "(" + (sessionID).toString() + "," + (time_stamp_vector[index]).toString() +","+ 
+												    //(emg_activity_vector[index][0]).toString() + "," + (emg_binary_activation_vector[index][0]).toString() + "," + (emg_activity_vector[index][1]).toString() + "," + (emg_binary_activation_vector[index][1]).toString() +  "," + (emg_activity_vector[index][2]).toString()  + "," + (emg_binary_activation_vector[index][2]).toString()+  "," + (emg_activity_vector[index][3]).toString()  + "," + (emg_binary_activation_vector[index][3]).toString() +  "," + (emg_activity_vector[index][4]).toString()  + "," + (emg_binary_activation_vector[index][4]).toString() +  "," + (emg_activity_vector[index][5]).toString()  + "," + (emg_binary_activation_vector[index][5]).toString() +  "," + (emg_activity_vector[index][6]).toString()  + "," + (emg_binary_activation_vector[index][6]).toString()+  "," + (emg_activity_vector[index][7]).toString()  + "," + (emg_binary_activation_vector[index][7]).toString() + 
+												    tibiaL_accX_vector[index].toString() + "," + tibiaR_accX_vector[index].toString() +  ");"
 
-									//var sql = "INSERT INTO data_sessions (idSesion, Date, emg_muscle_activity_s1,  muscle_binary_activation_s1, emg_muscle_activity_s2,  muscle_binary_activation_s2, emg_muscle_activity_s3,  muscle_binary_activation_s3,  emg_muscle_activity_s4,  muscle_binary_activation_s4,  emg_muscle_activity_s5,  muscle_binary_activation_s5, emg_muscle_activity_s6,  muscle_binary_activation_s6, emg_muscle_activity_s7,  muscle_binary_activation_s7, emg_muscle_activity_s8, muscle_binary_activation_s8, accX_s7, accY_s7, accZ_s7, accX_s3, accY_s3, accZ_s3) VALUES " + insertDataRows;
-									var sql = "INSERT INTO data_sessions (idSesion, Date, accX_s7,accX_s3) VALUES " + insertDataRows;
-									
-									
-								} else if (is_swalker_connected){
-									
-									// swalker connected. No emg .
+								    //var sql = "INSERT INTO data_sessions (idSesion, Date, emg_muscle_activity_s1,  muscle_binary_activation_s1, emg_muscle_activity_s2,  muscle_binary_activation_s2, emg_muscle_activity_s3,  muscle_binary_activation_s3,  emg_muscle_activity_s4,  muscle_binary_activation_s4,  emg_muscle_activity_s5,  muscle_binary_activation_s5, emg_muscle_activity_s6,  muscle_binary_activation_s6, emg_muscle_activity_s7,  muscle_binary_activation_s7, emg_muscle_activity_s8, muscle_binary_activation_s8, accX_s7, accY_s7, accZ_s7, accX_s3, accY_s3, accZ_s3) VALUES " + insertDataRows;
+								    var sql = "INSERT INTO data_sessions (idSesion, Date, accX_s7,accX_s3) VALUES " + insertDataRows;
+								    
+								    
+							    } else if (is_swalker_connected){
+								    
+								    // swalker connected. No emg .
 
-										insertDataRows = "(" + (sessionID).toString() + "," + (time_stamp_vector[index]).toString() +","+ 
-														(rom_left_vector[index]).toString() + "," + (rom_right_vector[index]).toString()  + "," + (load_vector[index]).toString() + "," + (dir_vector).toString()  + ");"
-										var sql = "INSERT INTO data_sessions (idSesion, Date, left_hip, right_hip, weight_gauge, direction) VALUES " + insertDataRows;
-									
-									
-								
-								}
-								//console.log(sql);
-								con.query(sql, function (err, result) {
-									
-									if (err) throw err;
-								});
-							}
-							console.log("Recorded Session Data");
-							socket.emit("monitoring:recorded_sessionData");
-						});
-					});
+									    insertDataRows = "(" + (sessionID).toString() + "," + (time_stamp_vector[index]).toString() +","+ 
+													    (rom_left_vector[index]).toString() + "," + (rom_right_vector[index]).toString()  + "," + (load_vector[index]).toString() + "," + (dir_vector).toString()  + ");"
+									    var sql = "INSERT INTO data_sessions (idSesion, Date, left_hip, right_hip, weight_gauge, direction) VALUES " + insertDataRows;
+								    
+								    
+							    
+							    }
+							    //console.log(sql);
+							    con.query(sql, function (err, result) {
+								    
+								    if (err) throw err;
+							    });
+						    }
+						    console.log("Recorded Session Data");
+						    socket.emit("monitoring:recorded_sessionData");
+					    });
+				    });
 			   });
            });
 
         })
+	
+	
+	//download acc excel
+	const workbook = new ExcelJS.Workbook();
+        const worksheetx = workbook.addWorksheet('X Axis');
+        const worksheety = workbook.addWorksheet('Y Axis');
+        const worksheetz = workbook.addWorksheet('Z Axis');
+	
+        worksheetx.addRow(["RF D X", "BF D X" ,"TA D X", "GM D X", "RF I X", "BF I X", "TA I X", "GM I X"])
+        worksheety.addRow(["RF D Y", "BF D Y" ,"TA D Y", "GM D Y", "RF I Y", "BF I Y", "TA I Y", "GM I Y"])
+        worksheetz.addRow(["RF D Z", "BF D Z" ,"TA D Z", "GM D Z", "RF I Z", "BF I Z", "TA I Z", "GM I Z"])
+	console.log(acc_all_data.length)
+        for (var i = 0; i < acc_all_data.length; i++) {
+	    worksheetx.addRow([acc_all_data[i][0], acc_all_data[i][3] , acc_all_data[i][6], acc_all_data[i][9], acc_all_data[i][12], acc_all_data[i][15], acc_all_data[i][18], acc_all_data[i][21]]).commit()
+	    worksheety.addRow([acc_all_data[i][1], acc_all_data[i][4] ,acc_all_data[i][7], acc_all_data[i][10], acc_all_data[i][13], acc_all_data[i][16], acc_all_data[i][19], acc_all_data[i][22]]).commit()
+	    worksheetz.addRow([acc_all_data[i][2], acc_all_data[i][5] ,acc_all_data[i][8], acc_all_data[i][11], acc_all_data[i][14], acc_all_data[i][17], acc_all_data[i][20], acc_all_data[i][23]]).commit()
+		
+		
+	}
+	
+	workbook.xlsx.writeFile('all_acc_datax.xlsx');
+	
+	n = 1;
+	const limitedInterval = setInterval(() => {
+		if (n == 4){
+		    socket.emit("monitoring:downloadAccExcellx");
+		    console.log("sent")
+		
+		}
+		if(n == 5){
+
+		    clearInterval(limitedInterval);	
+		}	 
+		n++
+		
+	}, 1000)
+	
+	//workbooky.xlsx.writeFile('all_acc_datay.xlsx');
+	//workbookz.xlsx.writeFile('all_acc_dataz.xlsx');
+	
+	
+	//socket.emit("monitoring:downloadAccExcelly");
+	//socket.emit("monitoring:downloadAccExcellz");
+	console.log("send")
     });
 
     //DELETE SESSION FROM DATABASE
@@ -688,6 +771,9 @@ io.on('connection', (socket) => {
     app.get('/downloadtherapists', (req, res) => setTimeout(function(){ res.download('./Therapists_data.xlsx'); }, 1000))
     app.get('/downloadpatients', (req, res) => setTimeout(function(){ res.download('./Patients_DB.xlsx'); }, 1000))
 
+    app.get('/downloadaccdata1', (req, res) => setTimeout(function(){ res.download('./all_acc_datax.xlsx'); }, 1000))
+    app.get('/downloadaccdata2', (req, res) => setTimeout(function(){ res.download('./all_acc_datay.xlsx'); }, 1000))
+    app.get('/downloadaccdata3', (req, res) => setTimeout(function(){ res.download('./all_acc_dataz.xlsx'); }, 1000))
 
     //GET PATIENT INFO AND AUTOFILL IN "Therapy Settings" (DATABASE)
     socket.on('get_patient_info',function(data){
@@ -870,9 +956,10 @@ io.on('connection', (socket) => {
    
     // Connect EMG
     socket.on('monitoring:connect_emg', function(callbackFn) {
+	console.log(is_delsys_connected)
 	    if (!is_delsys_connected) {
 			
-			// start port
+		// start port
 	        client_delsys_start.connect(DELSYS_START_PORT, DELSYS_PC_IP, function() {
 	            console.log('Connected to start');
 	        });  
@@ -887,6 +974,11 @@ io.on('connection', (socket) => {
             });  
             client_delsys_start.on('end', function() {
                 console.log('Delsys start ended');
+		socket.emit('monitoring:connection_status', {
+                    device: "emg",
+                    // status--> 0: connect, 1: disconnect, 2: not paired, 3: conn error, 4: conn closed
+                    status: 1
+                }) 
             });
             client_delsys_start.on('close', function() {
                 console.log('Delsys start closed');
@@ -991,6 +1083,7 @@ io.on('connection', (socket) => {
             status: 1
         }) 
     });
+    
     // Start therapy.
     socket.on('monitoring:start', function(callbackFn) {
 
@@ -1227,12 +1320,58 @@ function decodeFloat(buf1, last_index){
 		posInBuf = posInBuf+4;
 		
 		if(record_therapy){
-			if (index_channel  == 7){   //accx sensor 3
-				tibiaR_accX = float
-			} else if (index_channel ==19){
-				tibiaL_accX = float
+			if (index_channel  == 1){   
+			    s1_accX = float
+			} else if (index_channel  == 2){   
+			    s1_accY = float
+			} else if (index_channel == 3){
+			    s1_accZ = float
+			} else if (index_channel  == 4){   
+			    s2_accX = float
+			} else if (index_channel  == 5){   
+			    s2_accY = float
+			} else if (index_channel == 6){
+			    s2_accZ = float
+			} else if(index_channel  == 7){   //accx sensor 3
+			    tibiaR_accX = float
+			    s3_accX = float
+			} else if (index_channel == 8){
+			    s3_accY = float
+			} else if (index_channel == 9){
+			    s3_accZ = float
+			} else if (index_channel  == 10){   
+			    s4_accX = float
+			} else if (index_channel  == 11){  
+			    s4_accY = float
+			} else if (index_channel == 12){
+			    s4_accZ = float
+			} else if (index_channel  == 13){   
+			    s5_accX = float
+			} else if (index_channel  == 14){  
+			    s5_accY = float
+			} else if (index_channel == 15){
+			    s5_accZ = float
+			} else if (index_channel  == 16){  
+			    s6_accX = float
+			} else if (index_channel  == 17){   
+			    s6_accY = float
+			} else if (index_channel == 18){
+			    s6_accZ = float
+			} else if (index_channel == 19){
+			    tibiaL_accX = float			//accx sensor 7
+			    s7_accX = float
+			} else if (index_channel == 20){
+			    s7_accY = float
+			} else if (index_channel == 21){
+			    s7_accZ = float
+			}else if (index_channel  == 22){   
+			    s8_accX = float
+			} else if (index_channel  == 23){  
+			    s8_accY = float
+			} else if (index_channel  == 24){  
+			    s8_accZ = float
 			} else if(index_channel == 48){
-				index_channel = 0;
+			    index_channel = 0;
 			}
 		}
 		
