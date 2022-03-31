@@ -17,7 +17,6 @@ var track = audioContext.createMediaElementSource(audioElement);
 
 //** Global variables **//
 var THERAPY_MONITOR_GOTO_LINK;
-var i_counter = 1;
 
 // SWalker variables 
 var rom_right;
@@ -26,39 +25,15 @@ var load;
 var is_swalker_connected = false;
 var patient_weight = 1;
 
-// vars used to define the gait cycle
-var found_right_heel = false;
-var found_left_heel = false;
-var min_left_value = 0;
-var min_right_value = 0;
-var current_step = 0;
-var step_left = 0;
-
 // Therapy variables
 var is_dataRecorded = true;
 var therapy_started = false;
 var therapy_reestart = false;
-var numberElements_right;
-var numberElements_left;
 
 // EMG variables
 var emg_enabled = false
 var filtered_emg = [0,0,0,0,0,0,0,0];
 var envelope_emg = [0,0,0,0,0,0,0,0];
-var normalized_value = 0
-var y_activation_values = [40, 20, 0, -20, 40, 20, 0, -20];
-var hidden_emg = true;
-var currentColor;
-var currentWidth;
-
-// IMUS variables
-//var imus_enabled = false;
-
-// Gait variables
-var count_traction = 0;
-var flag_stp = true;
-var new_step = false;
-var numberElements = 100;
 
 //** HTML interaction **//
 window.onload = function() {
@@ -253,6 +228,8 @@ window.onload = function() {
 	
 	$('#ROM_tab').on('shown.bs.tab', function (event) {
 		rendered=false;
+		
+		emptyJointGraphs()
 	});
 	$('#EMG_tab2').on('shown.bs.tab', function (event) {
 		console.log("hwn");
@@ -419,7 +396,28 @@ window.onload = function() {
 			ctxgmrightInstance.data.labels = [];
 		}
 	}
+	
+	socket.on("monitoring:downloadAccExcellx", (data) =>{
+		console.log("received")
+		j = 1
+		const limitedInterval = setInterval(() => {
+			if (j ==2){
+				window.open('http://192.168.43.1:3000/downloadaccdata1');
+				
+					
+			} 	
+			if(j == 3){
+				console.log("lets clear")
+				clearInterval(limitedInterval);
+			}
+			j++
+			
+		    }, 1000)
 		
+	})
+	
+	
+
 	// Vars used for objects agrupation
 	var ctx_emg_real_data_objects =  [ctxrhipInstance.data.datasets[1], ctxrhipInstance.data.datasets[2], ctxlhipInstance.data.datasets[1], ctxlhipInstance.data.datasets[2]];
 	var ctx_rom_data_objects = [ctxrhipInstance.data.datasets[0],  ctxlhipInstance.data.datasets[0]]
@@ -435,9 +433,9 @@ window.onload = function() {
 		emg_enabled = data.emg_connection_status;
 		emg_data = data.emg;     // json
 		// Avoid errors in case EMG is not connected
-		if ((emg_data.length == 0  || JSON.parse(emg_data).emg_filtered == undefined) || (!emg_enabled)) {
+		if ((emg_data.length == 0  || JSON.parse(emg_data).filtered_emg == undefined) || (!emg_enabled)) {
 			filtered_emg= [0,0,0,0,0,0,0,0];
-			envelope_emg = [4,4,4,4,4,4,4,4];    
+			envelope_emg = [0,0,0,0,0,0,0,0];    
 			
 
 		} else {
@@ -446,8 +444,9 @@ window.onload = function() {
 				document.getElementById("enable_emg").innerHTML = "Desconectar EMG";
 				document.getElementById("enable_emg").style.background = "#fd4e4e";
 			}
-			filtered_emg = emg_data.filtered_emg;
-			envelope_emg = emg_data.envelope_emg; 
+			filtered_emg = JSON.parse(emg_data).filtered_emg;
+			envelope_emg = JSON.parse(emg_data).envelope_emg; 
+			//console.log(envelope_emg)
 		}
 
 		if (therapy_reestart) {
@@ -469,66 +468,57 @@ window.onload = function() {
 			document.getElementById("connect_swalker").value = "on";
 			document.getElementById("connect_swalker").innerHTML = "Desconectar SWalker";
 			document.getElementById("connect_swalker").style.background = "#4eb14e";
-		}
-		
-		if (therapy_started){
+		}		
 			
-			// update data values
-			// swalker
-			if (is_swalker_connected){
-				// show y axis label and ticks
-				//update supported weight
-				document.getElementById("supported_weight").innerHTML =  (100*load/patient_weight); 
+		if (is_swalker_connected){
+					
+			// show y axis label and ticks
+			//update supported weight
+			document.getElementById("supported_weight").innerHTML =  (100*load/patient_weight); 
 
-				// update dataset rom values
-				pushDataValue(rom_right, ctxrhipInstance.data.datasets[0], 0, '#FF2626');
-				pushDataValue(rom_left, ctxlhipInstance.data.datasets[0], 0, '#FF2626');
-			} 
+			// update dataset rom values
+			pushDataValue(rom_right, ctxrhipInstance.data.datasets[0], 0, '#FF2626');
+			pushDataValue(rom_left, ctxlhipInstance.data.datasets[0], 0, '#FF2626');
 			
-			if (is_swalker_connected){
-							
-					// update labels
-					var segundos = Math.trunc(updateCounter_rom/10);
-					var milisegundos = Math.trunc((updateCounter_rom/10 - segundos)*1000);
-					var minutos = Math.trunc(segundos/60);
-					segundos = segundos - minutos*60; 
-					var label = minutos + '-' + segundos + '-' + milisegundos;
+			// update labels
+			var segundos = Math.trunc(updateCounter_rom/10);
+			var milisegundos = Math.trunc((updateCounter_rom/10 - segundos)*1000);
+			var minutos = Math.trunc(segundos/60);
+			segundos = segundos - minutos*60; 
+			var label = minutos + '-' + segundos + '-' + milisegundos;
 
-					ctxlhipInstance.data.labels.push(label);
-					ctxrhipInstance.data.labels.push(label);
+			ctxlhipInstance.data.labels.push(label);
+			ctxrhipInstance.data.labels.push(label);
+				
+				
+			// delete first element to keep the graph in movement. PlotSampling data reception: 20Hz --> 2 segundos: 40muestras
+			if((updateCounter_rom > 49)){
+				
+				ctxrhipInstance.data.labels.shift();
+				ctxlhipInstance.data.labels.shift();
 					
-					
-				// delete first element to keep the graph in movement. PlotSampling data reception: 20Hz --> 2 segundos: 40muestras
-				if((updateCounter_rom > 49)){
-					
-					ctxrhipInstance.data.labels.shift();
-					ctxlhipInstance.data.labels.shift();
-						
-					if (is_swalker_connected){
-						// y_value
-						ctxrhipInstance.data.datasets[0].data.shift();
-						ctxlhipInstance.data.datasets[0].data.shift();
-						// point width
-						ctxrhipInstance.data.datasets[0].pointBorderWidth.shift();
-						ctxlhipInstance.data.datasets[0].pointBorderWidth.shift();
-						// background color
-						ctxrhipInstance.data.datasets[0].pointBackgroundColor.shift();
-						ctxlhipInstance.data.datasets[0].pointbackgroundColor.shift();
-						// point border color
-						ctxrhipInstance.data.datasets[0].pointBorderColor.shift();
-						ctxlhipInstance.data.datasets[0].pointBorderColor.shift();
-					} 
-					
+				if (is_swalker_connected){
+					// y_value
+					ctxrhipInstance.data.datasets[0].data.shift();
+					ctxlhipInstance.data.datasets[0].data.shift();
+					// point width
+					ctxrhipInstance.data.datasets[0].pointBorderWidth.shift();
+					ctxlhipInstance.data.datasets[0].pointBorderWidth.shift();
+					// background color
+					ctxrhipInstance.data.datasets[0].pointBackgroundColor.shift();
+					ctxlhipInstance.data.datasets[0].pointbackgroundColor.shift();
+					// point border color
+					ctxrhipInstance.data.datasets[0].pointBorderColor.shift();
+					ctxlhipInstance.data.datasets[0].pointBorderColor.shift();
 				} 
 				
-				
-			}	
+			} 	
 			
 		} else {
 			
 			// ROM
-			ctxlhipInstance.data.labels = ['00:00', '05:00'];
-			ctxrhipInstance.data.labels = ['00:00', '05:00'];			
+			ctxlhipInstance.data.labels = ['00:00', '00:01'];
+			ctxrhipInstance.data.labels = ['00:00', '00:01'];			
 			
 		}
 		
@@ -560,7 +550,7 @@ window.onload = function() {
 				ctxrfleftInstance.data.datasets[0].data.push(envelope_emg[4]*1000);
 				ctxbfleftInstance.data.datasets[0].data.push(envelope_emg[5]*1000);
 				ctxtaleftInstance.data.datasets[0].data.push(envelope_emg[6]*1000);
-				ctxgmleftInstance.data.datasets[0].data.push(eevelope_emg[7]*1000);
+				ctxgmleftInstance.data.datasets[0].data.push(envelope_emg[7]*1000);
 		
 				
 				if( updateCounter_emg >  49){
@@ -586,14 +576,14 @@ window.onload = function() {
 				
 			} else {
 				
-				ctxrfleftInstance.data.labels = ['00:00', '05:00'];
-				ctxrfrightInstance.data.labels = ['00:00', '05:00'];
-				ctxbfleftInstance.data.labels = ['00:00', '05:00'];
-				ctxbfrightInstance.data.labels = ['00:00', '05:00'];
-				ctxtaleftInstance.data.labels = ['00:00', '05:00'];
-				ctxtarightInstance.data.labels = ['00:00', '05:00'];
-				ctxgmleftInstance.data.labels = ['00:00', '05:00'];
-				ctxgmrightInstance.data.labels = ['00:00', '05:00'];
+				ctxrfleftInstance.data.labels = ['00:00', '00:01'];
+				ctxrfrightInstance.data.labels = ['00:00', '00:01'];
+				ctxbfleftInstance.data.labels = ['00:00', '00:01'];
+				ctxbfrightInstance.data.labels = ['00:00', '00:01'];
+				ctxtaleftInstance.data.labels = ['00:00', '00:01'];
+				ctxtarightInstance.data.labels = ['00:00', '00:01'];
+				ctxgmleftInstance.data.labels = ['00:00', '00:01'];
+				ctxgmrightInstance.data.labels = ['00:00', '00:01'];
 			}
 	
 		}
@@ -682,7 +672,6 @@ window.onload = function() {
 				
 			}
 			socket.emit('monitoring:stop'); 
-			current_step = 0;
 			emptyJointGraphs();
 			empty_envelope_graphs();
 			
@@ -695,7 +684,7 @@ window.onload = function() {
 				ds_real = ctx_emg_real_data_objects[i];
 
 				hideDataset(ds_real);
-				console.log("hided");
+				console.log("hidden");
 			}
 
 		} else if (document.getElementById("enable_emg").value == "connecting") {
@@ -758,6 +747,7 @@ window.onload = function() {
 					if (is_swalker_connected){
 						// show initial position modal (start swalker rom calibrations), then change button content
 						$("#modaltherapyadviceinitialposition").modal('show');
+						console.log("Mostramos el modal de la posicion inicial porque está el swalker conectado")
 					} else {
 						// change button content
 						var myTimer;
@@ -804,7 +794,6 @@ window.onload = function() {
 				document.getElementById("start_stop").style.borderColor = "#0968e4";
 				therapy_started = false;
 				socket.emit('monitoring:stop'); 
-				current_step = 0;
 				emptyJointGraphs();
 				empty_envelope_graphs();
 			}
@@ -1029,12 +1018,8 @@ window.onload = function() {
 		//reset hip rom labels and datasets
 		ctxrhipInstance.data.labels = [];
 		ctxrhipInstance.data.datasets[0].data = [];	
-		ctxrhipInstance.data.datasets[1].data = [];	
-		ctxrhipInstance.data.datasets[2].data = [];	
 		ctxlhipInstance.data.labels = [];
 		ctxlhipInstance.data.datasets[0].data = [];
-		ctxlhipInstance.data.datasets[1].data = [];
-		ctxlhipInstance.data.datasets[2].data = [];
 		
 	}
 };
@@ -1105,7 +1090,7 @@ socket.on('monitoring:connection_status', (data) => {
 			//change button color and text;
 			document.getElementById("enable_emg").value = "off";
 			document.getElementById("enable_emg").innerHTML = "Conectar EMG";
-			document.getElementById("enable_emg").style.background = "#808080";
+			document.getElementById("enable_emg").style.background = "#eb0a0a";
 			emg_enabled = false
 		}
 
