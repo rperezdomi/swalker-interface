@@ -485,9 +485,13 @@ window.onload = function() {
 			var milisegundos = Math.trunc((updateCounter_rom/10 - segundos)*1000);
 			var minutos = Math.trunc(segundos/60);
 			segundos = segundos - minutos*60; 
-			if(Math.trunc(milisegundos.toString().length) < 3){
+			if(Math.trunc(milisegundos).toString().length == 1){
+					milisegundos = '00' + milisegundos;
+			} else if(Math.trunc(milisegundos).toString().length == 2){
 					milisegundos = '0' + milisegundos;
-				}
+			} else if(Math.trunc(milisegundos).toString().length == 0){
+					milisegundos = '000' ;
+			}
 			var label = minutos + '-' + segundos + '-' + milisegundos;
 
 
@@ -537,8 +541,12 @@ window.onload = function() {
 				var minutos = Math.trunc(segundos/60);
 				segundos = segundos - minutos*60; 
 				
-				if(Math.trunc(milisegundos.toString().length) < 3){
+				if(Math.trunc(milisegundos).toString().length == 1){
+					milisegundos = '00' + milisegundos;
+				} else if(Math.trunc(milisegundos).toString().length == 2){
 					milisegundos = '0' + milisegundos;
+				} else if(Math.trunc(milisegundos).toString().length == 0){
+					milisegundos = '000' ;
 				}
 				var label = minutos + '-' + segundos + '-' + milisegundos;
 
