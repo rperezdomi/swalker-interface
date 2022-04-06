@@ -437,7 +437,6 @@ window.onload = function() {
 			filtered_emg= [0,0,0,0,0,0,0,0];
 			envelope_emg = [0,0,0,0,0,0,0,0];    
 			
-
 		} else {
 			if (document.getElementById("enable_emg").value == "connecting"){
 				document.getElementById("enable_emg").value = "on";

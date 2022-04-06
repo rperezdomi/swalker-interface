@@ -323,10 +323,10 @@ io.on('connection', (socket) => {
     socket.on('refreshlist',function() {
         console.log("Connected!");
         console.log("Connected Sessions!");
-        var sql = "SELECT * FROM tabla_sesion JOIN tabla_pacientes ON tabla_sesion.idPaciente = tabla_pacientes.idtabla_pacientes JOIN tabla_terapeutas ON tabla_sesion.idTerapeuta = tabla_terapeutas.idtabla_terapeutas";
+        var sql = "SELECT * FROM tabla_sesion JOIN tabla_pacientes ON tabla_sesion.idPaciente = tabla_pacientes.idtabla_pacientes";
         con.query(sql, function (err, sessions_data) {
             if (err) throw err;
-            socket.emit('datostabla', sessions_data);   //session_data---- datos de las sesiones (configuraciones)
+            socket.emit('datostabla', sessions_data);   //session_data --- datos de las sesiones (configuraciones)
         });
         console.log("Connected Patient!");
         var sql = "SELECT * FROM tabla_pacientes";
