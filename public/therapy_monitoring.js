@@ -120,6 +120,9 @@ window.onload = function() {
 		elements: {
 			line: {
 				tension: 0.1 // disables bezier curves
+			},
+			point:{
+				radius: 0
 			}
 		}
 	};
@@ -476,8 +479,8 @@ window.onload = function() {
 			document.getElementById("supported_weight").innerHTML =  (100*load/patient_weight); 
 
 			// update dataset rom values
-			pushDataValue(rom_right, ctxrhipInstance.data.datasets[0], 0, '#FF2626');
-			pushDataValue(rom_left, ctxlhipInstance.data.datasets[0], 0, '#FF2626');
+			ctxrhipInstance.data.datasets[0].data.push(rom_right);
+			ctxlhipInstance.data.datasets[0].data.push(rom_left);
 			
 			// update labels
 			var segundos = Math.trunc(updateCounter_rom/10);
@@ -504,20 +507,11 @@ window.onload = function() {
 				ctxrhipInstance.data.labels.shift();
 				ctxlhipInstance.data.labels.shift();
 					
-				if (is_swalker_connected){
-					// y_value
-					ctxrhipInstance.data.datasets[0].data.shift();
-					ctxlhipInstance.data.datasets[0].data.shift();
-					// point width
-					ctxrhipInstance.data.datasets[0].pointBorderWidth.shift();
-					ctxlhipInstance.data.datasets[0].pointBorderWidth.shift();
-					// background color
-					ctxrhipInstance.data.datasets[0].pointBackgroundColor.shift();
-					ctxlhipInstance.data.datasets[0].pointbackgroundColor.shift();
-					// point border color
-					ctxrhipInstance.data.datasets[0].pointBorderColor.shift();
-					ctxlhipInstance.data.datasets[0].pointBorderColor.shift();
-				} 
+			
+				// y_value
+				ctxrhipInstance.data.datasets[0].data.shift();
+				ctxlhipInstance.data.datasets[0].data.shift();
+				
 				
 			} 	
 			
