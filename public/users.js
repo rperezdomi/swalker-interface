@@ -457,7 +457,7 @@ socket.on('patientdata',function(datapatient){
       let dt = $('#patientsList').DataTable();
       let vars = dt.data().toArray();
       let checkeds = dt.data().toArray().filter((data) => data.checked);
-
+		console.log(checkeds[0])
       for (i = 0; i < vars.length; i++) {
           if (checkeds[0].idtabla_pacientes == vars[i].idtabla_pacientes){
             console.log(i);
@@ -496,6 +496,7 @@ socket.on('patientdata',function(datapatient){
         'hip_joint': checkeds[0].hip_joint,
       }).draw();
       
+      console.log(checkeds[0])
       socket.emit('edit_patient',checkeds[0]);
     });
 

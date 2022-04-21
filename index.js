@@ -18,12 +18,13 @@ var therapyConfigPath = path.join(__dirname, 'config','therapySettings.json');
 var is_swalker_connected = false;
 var speed_char = 's';
 var direction_char = 's';
-var global_patiente_weight = 1;
+var global_patient_weight = 1;
 var patient_leg_length = 0;
 var counter = 0;
 // Testing vars
 var test_rom_right_vector = [36.5585, 36.5259, 36.4962, 36.4689, 36.4408, 36.3909, 36.335, 36.271, 36.1943, 36.0842, 35.9539, 35.8015, 35.6229, 35.3996, 35.1472, 34.8671, 34.5588, 34.2085, 33.8337, 33.4375, 33.021, 32.5716, 32.1055, 31.6253, 31.1309, 30.6092, 30.0759, 29.5333, 28.982, 28.4101, 27.8326, 27.2519, 26.6686, 26.0712, 25.4745, 24.881, 24.2907, 23.6928, 23.0991, 22.5103, 21.9251, 21.3314, 20.7416, 20.1566, 19.576, 18.9904, 18.4092, 17.8328, 17.26, 16.6806, 16.1042, 15.5317, 14.9625, 14.3888, 13.8194, 13.2551, 12.6957, 12.1344, 11.5788, 11.0296, 10.4863, 9.943, 9.4059, 8.8751, 8.35, 7.8256, 7.307, 6.7943, 6.2873, 5.782, 5.2825, 4.789, 4.3013, 3.8162, 3.3365, 2.8623, 2.3931, 1.9264, 1.4649, 1.0089, 0.55876, 0.11339, -0.32492, -0.75545, -1.1777, -1.592, -1.9966, -2.3906, -2.7733, -3.1449, -3.503, -3.8462, -4.1732, -4.483, -4.7732, -5.0422, -5.2883, -5.5107, -5.7056, -5.8703, -6.0025, -6.1013, -6.1635, -6.1873, -6.1715, -6.117, -6.0199, -5.8784, -5.691, -5.4588, -5.1776, -4.8459, -4.4624, -4.0296, -3.5434, -3.0028, -2.408, -1.7637, -1.0667, -0.31824, 0.47919, 1.3179, 2.1989, 3.1186, 4.0724, 5.0499, 6.0517, 7.0737, 8.1109, 9.1527, 10.2008, 11.2518, 12.3017, 13.3403, 14.3718, 15.3946, 16.4062, 17.397, 18.3728, 19.3328, 20.2749, 21.189, 22.0824, 22.9548, 23.805, 24.6222, 25.4163, 26.1884, 26.9377, 27.6538, 28.3466, 29.0165, 29.6621, 30.2707, 30.8549, 31.416, 31.9538, 32.4557, 32.9354, 33.3942, 33.8315, 34.2332, 34.613, 34.9714, 35.3072, 35.6047, 35.8803, 36.136, 36.3716, 36.5725, 36.7541, 36.9172, 37.0604, 37.1663, 37.2525, 37.3207, 37.3704, 37.3856, 37.3845, 37.3695, 37.3407, 37.2817, 37.2124, 37.1364, 37.0547, 36.9514, 36.8478, 36.7477, 36.6527, 36.5465, 36.4502, 36.367, 36.2969, 36.2222, 36.1618, 36.1168, 36.085, 36.046, 36.0174, 35.9986, 35.9863];
 var test_rom_left_vector = [36.5585, 36.5259, 36.4962, 36.4689, 36.4408, 36.3909, 36.335, 36.271, 36.1943, 36.0842, 35.9539, 35.8015, 35.6229, 35.3996, 35.1472, 34.8671, 34.5588, 34.2085, 33.8337, 33.4375, 33.021, 32.5716, 32.1055, 31.6253, 31.1309, 30.6092, 30.0759, 29.5333, 28.982, 28.4101, 27.8326, 27.2519, 26.6686, 26.0712, 25.4745, 24.881, 24.2907, 23.6928, 23.0991, 22.5103, 21.9251, 21.3314, 20.7416, 20.1566, 19.576, 18.9904, 18.4092, 17.8328, 17.26, 16.6806, 16.1042, 15.5317, 14.9625, 14.3888, 13.8194, 13.2551, 12.6957, 12.1344, 11.5788, 11.0296, 10.4863, 9.943, 9.4059, 8.8751, 8.35, 7.8256, 7.307, 6.7943, 6.2873, 5.782, 5.2825, 4.789, 4.3013, 3.8162, 3.3365, 2.8623, 2.3931, 1.9264, 1.4649, 1.0089, 0.55876, 0.11339, -0.32492, -0.75545, -1.1777, -1.592, -1.9966, -2.3906, -2.7733, -3.1449, -3.503, -3.8462, -4.1732, -4.483, -4.7732, -5.0422, -5.2883, -5.5107, -5.7056, -5.8703, -6.0025, -6.1013, -6.1635, -6.1873, -6.1715, -6.117, -6.0199, -5.8784, -5.691, -5.4588, -5.1776, -4.8459, -4.4624, -4.0296, -3.5434, -3.0028, -2.408, -1.7637, -1.0667, -0.31824, 0.47919, 1.3179, 2.1989, 3.1186, 4.0724, 5.0499, 6.0517, 7.0737, 8.1109, 9.1527, 10.2008, 11.2518, 12.3017, 13.3403, 14.3718, 15.3946, 16.4062, 17.397, 18.3728, 19.3328, 20.2749, 21.189, 22.0824, 22.9548, 23.805, 24.6222, 25.4163, 26.1884, 26.9377, 27.6538, 28.3466, 29.0165, 29.6621, 30.2707, 30.8549, 31.416, 31.9538, 32.4557, 32.9354, 33.3942, 33.8315, 34.2332, 34.613, 34.9714, 35.3072, 35.6047, 35.8803, 36.136, 36.3716, 36.5725, 36.7541, 36.9172, 37.0604, 37.1663, 37.2525, 37.3207, 37.3704, 37.3856, 37.3845, 37.3695, 37.3407, 37.2817, 37.2124, 37.1364, 37.0547, 36.9514, 36.8478, 36.7477, 36.6527, 36.5465, 36.4502, 36.367, 36.2969, 36.2222, 36.1618, 36.1168, 36.085, 36.046, 36.0174, 35.9986, 35.9863];
+var test_load_vector = [36.5585, 36.5259, 36.4962, 36.4689, 36.4408, 36.3909, 36.335, 36.271, 36.1943, 36.0842, 35.9539, 35.8015, 35.6229, 35.3996, 35.1472, 34.8671, 34.5588, 34.2085, 33.8337, 33.4375, 33.021, 32.5716, 32.1055, 31.6253, 31.1309, 30.6092, 30.0759, 29.5333, 28.982, 28.4101, 27.8326, 27.2519, 26.6686, 26.0712, 25.4745, 24.881, 24.2907, 23.6928, 23.0991, 22.5103, 21.9251, 21.3314, 20.7416, 20.1566, 19.576, 18.9904, 18.4092, 17.8328, 17.26, 16.6806, 16.1042, 15.5317, 14.9625, 14.3888, 13.8194, 13.2551, 12.6957, 12.1344, 11.5788, 11.0296, 10.4863, 9.943, 9.4059, 8.8751, 8.35, 7.8256, 7.307, 6.7943, 6.2873, 5.782, 5.2825, 4.789, 4.3013, 3.8162, 3.3365, 2.8623, 2.3931, 1.9264, 1.4649, 1.0089, 0.55876, 0.11339, -0.32492, -0.75545, -1.1777, -1.592, -1.9966, -2.3906, -2.7733, -3.1449, -3.503, -3.8462, -4.1732, -4.483, -4.7732, -5.0422, -5.2883, -5.5107, -5.7056, -5.8703, -6.0025, -6.1013, -6.1635, -6.1873, -6.1715, -6.117, -6.0199, -5.8784, -5.691, -5.4588, -5.1776, -4.8459, -4.4624, -4.0296, -3.5434, -3.0028, -2.408, -1.7637, -1.0667, -0.31824, 0.47919, 1.3179, 2.1989, 3.1186, 4.0724, 5.0499, 6.0517, 7.0737, 8.1109, 9.1527, 10.2008, 11.2518, 12.3017, 13.3403, 14.3718, 15.3946, 16.4062, 17.397, 18.3728, 19.3328, 20.2749, 21.189, 22.0824, 22.9548, 23.805, 24.6222, 25.4163, 26.1884, 26.9377, 27.6538, 28.3466, 29.0165, 29.6621, 30.2707, 30.8549, 31.416, 31.9538, 32.4557, 32.9354, 33.3942, 33.8315, 34.2332, 34.613, 34.9714, 35.3072, 35.6047, 35.8803, 36.136, 36.3716, 36.5725, 36.7541, 36.9172, 37.0604, 37.1663, 37.2525, 37.3207, 37.3704, 37.3856, 37.3845, 37.3695, 37.3407, 37.2817, 37.2124, 37.1364, 37.0547, 36.9514, 36.8478, 36.7477, 36.6527, 36.5465, 36.4502, 36.367, 36.2969, 36.2222, 36.1618, 36.1168, 36.085, 36.046, 36.0174, 35.9986, 35.9863];
 var i_test_rom_r = 0;
 var i_test_rom_l = Math.trunc(test_rom_left_vector.length/2);
 
@@ -62,10 +63,11 @@ serial_swalker.on('data', function(data){
     ascii_msg = hex2a_general(data, lasthex_sw, is_first_data[0]);
     let msg_list_sw = ascii_msg[0];
     is_first_data[0] = ascii_msg[1];
-    
     for(i=0; i < msg_list_sw.length; i++){
+		console.log(msg_list_sw[i])
 		if(msg_list_sw[i].includes("=") & msg_list_sw[i].includes(',')){
 			let data_vector = msg_list_sw[i].split('=')[1].split(',');
+			
 			if(data_vector.length == 4){	
 				// Data storage
 				rom_left = parseFloat(data_vector[2]);
@@ -78,7 +80,7 @@ serial_swalker.on('data', function(data){
 						// swalker data
 						rom_left_vector.push(parseFloat(rom_left-rom_left_calibration));
 						rom_right_vector.push(parseFloat(rom_right-rom_right_calibration));
-						load_vector.push((parseFloat(load)/global_patiente_weight)*100);
+						load_vector.push(((parseFloat(load)/global_patient_weight)*100).toFixed(2));
 						time_stamp_vector.push(Date.now());
 						direction_vector.push(direction_char);
 					}
@@ -89,14 +91,15 @@ serial_swalker.on('data', function(data){
 				//console.log(sw_msgData);
 				
 			} else {
-				lasthex_imu1 = '#' + msg_list_sw[i]
+				lasthex_sw = '#' + msg_list_sw[i]
 			}
 		} else {
-			lasthex_imu1 = '#' + msg_list_sw[i]
+			lasthex_sw = '#' + msg_list_sw[i]
 		}
 				
 	}
 }); 
+
 serial_swalker.on('closed', function(){
 	console.log("connection closed");  
 	sockets['websocket'].emit('monitoring:connection_status',{
@@ -194,7 +197,7 @@ client_delsys_acc.on('data', function(msg) {
 		// swalker data    (si ni está conectado, se almacenarán 0s)
 		rom_left_vector.push(parseFloat(rom_left-rom_left_calibration));
 		rom_right_vector.push(parseFloat(rom_right-rom_right_calibration));
-		load_vector.push((parseFloat(load)/global_patiente_weight)*100);
+		load_vector.push(((parseFloat(load)/global_patient_weight)*100).toFixed(2));
 		direction_vector.push(direction_char);
 		
 		// acc
@@ -210,6 +213,7 @@ client_delsys_acc.on('data', function(msg) {
 var sockets = Object.create(null);
 var udpServer_VR = net.createServer();
 udpServer_VR.listen(41235);
+console.log("listening on server 41235 - VR");
 var is_client_connected = false;
 var vr_ready = false; 
 
@@ -225,7 +229,7 @@ udpServer_VR.on('connection', function(socket){
 	var clientname = socket.nickname;
 	sockets[clientname] = socket;
 
-	console.log('a new connection on 41235 (VR)');
+	console.log('There is a new connection !!');
 	is_client_connected = true;
 	socket.on('data',function(data){
 		console.log(data.toString());
@@ -237,6 +241,7 @@ udpServer_VR.on('connection', function(socket){
 					is_swalker_connected = true;
 					if(is_swalker_connected){
 					    var json_msg = {rom: [rom_right, rom_left], emg: envelope_emg, leg: parseInt(patient_leg_length)}
+					    console.log(json_msg)
 					    socket.write(JSON.stringify(json_msg))
 					}
 				} else{
@@ -364,7 +369,7 @@ io.on('connection', (socket) => {
     socket.on('edit_patient', function(editpat) {
 		console.log(editpat)
         var sql = 'UPDATE tabla_pacientes SET NombrePaciente = ?, ApellidoPaciente = ?, patiente_age = ?, patiente_weight = ?, leg_length = ?, estado_fisico = ?, estado_cognitivo = ?, surgery = ?, hip_joint = ?, patient_height = ?, patient_active_rom = ?, patient_gender = ?  WHERE (idtabla_pacientes=?)'
-        con.query(sql,[editpat.NombrePaciente,editpat.ApellidoPaciente,editpat.patiente_age, editpat.patiente_weigh, editpat.leg_length, editpat.estado_fisico, editpat.estado_cognitivo, editpat.surgery, editpat.hip_joint, editpat.patient_height, editpat.patient_active_rom, editpat.patient_gender, editpat.idtabla_pacientes], function (err, result) {
+        con.query(sql,[editpat.NombrePaciente,editpat.ApellidoPaciente,editpat.patiente_age, editpat.patiente_weight, editpat.leg_length, editpat.estado_fisico, editpat.estado_cognitivo, editpat.surgery, editpat.hip_joint, editpat.patient_height, editpat.patient_active_rom, editpat.patient_gender, editpat.idtabla_pacientes], function (err, result) {
             console.log("Edited Patient");
         });
     });
@@ -796,7 +801,7 @@ io.on('connection', (socket) => {
                
 				patient_age = patient_data[0].patiente_age; test_rom_right_vector
 				patient_weight = patient_data[0].patiente_weight;
-				global_patient_weight = patient_data[0].patiente_weight;
+				global_patient_weight = parseFloat(patient_data[0].patiente_weight);
 				patient_leg_length = patient_data[0].leg_length;
 				patient_hip_joint = patient_data[0].hip_joint;
 				var surgery = patient_data[0].surgery;
@@ -854,10 +859,11 @@ io.on('connection', (socket) => {
             // SWALKER
             swalker_connection_status: is_swalker_connected,
             //swalker_connection_status: true,
-            load: load,
+            load: (parseFloat(load)/global_patient_weight)*100,
+            //load: (parseFloat(test_load_vector[i_test_rom_r])/global_patient_weight)*100,
             //rom_right: test_rom_right_vector[i_test_rom_r],
-            rom_right: (rom_right - rom_right_calibration),
-            rom_left: (rom_left - rom_left_calibration),
+            rom_right: (rom_right - parseFloat(rom_right_calibration)),
+            rom_left: (rom_left - parseFloat(rom_left_calibration)),
             //rom_left: test_rom_left_vector[i_test_rom_l],
             // EMG
             emg: emg_msg,
@@ -874,6 +880,7 @@ io.on('connection', (socket) => {
 	} else {
 	    i_test_rom_l = i_test_rom_l+5;
 	}*/
+	
     }, PLOTSAMPLINGTIME);
 
     // Save therapy settings in a JSON file.
@@ -913,6 +920,8 @@ io.on('connection', (socket) => {
             console.log(config.gait_velocity)
             therapy_speed = config.gait_velocity;
 			patient_leg_length = config.leg_length;
+			global_patient_weight = config.patient_weight;
+			console.log(global_patient_weight);
             // Send values
             socket.emit('monitoring:show_therapy_settings', {
                 patient_name : config.patient_name,
@@ -1219,9 +1228,9 @@ function hex2a_general(hexx, lasthex, is_first_data) {
 		}
 	
 	}
+	message.push(splitted)
+	message.push(is_first_data)
 	
-    message.push(splitted)
-    message.push(is_first_data)
     return message; 
 }
 
@@ -1295,6 +1304,9 @@ function connect_bt_device(socket, bt_object, status_boolean, str_device){
 			
 			} 
 				
+		})
+		.catch(function(err){
+			console.log("error in bluetooth connection")
 		});
 		
 	

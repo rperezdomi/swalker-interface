@@ -430,7 +430,7 @@ window.onload = function() {
 	//** Data incomming from the Webserver (index) **//
 	socket.on('monitoring:jointData', (data) => {
 		is_swalker_connected = data.swalker_connection_status;
-		load = data.load;
+		load = parseFloat(data.load);
 		rom_right = data.rom_right;
 		rom_left = data.rom_left;
 		emg_enabled = data.emg_connection_status;
@@ -462,6 +462,9 @@ window.onload = function() {
 		if(document.getElementById("connect_swalker").value == "on" && ctxrhipInstance.data.datasets[0].hidden == true){
 			showDataset(ctxrhipInstance.data.datasets[0]);
 			showDataset(ctxlhipInstance.data.datasets[0]);
+			emptyJointGraphs();
+			
+			
 		};
 		
 		
@@ -476,8 +479,14 @@ window.onload = function() {
 					
 			// show y axis label and ticks
 			//update supported weight
-			document.getElementById("supported_weight").innerHTML =  (100*load/patient_weight); 
-
+			if(load < 0){
+				load = 0.00;
+			} else if (load > 100){
+				load = 100.00;
+			} else {
+				document.getElementById("supported_weight").innerHTML =  load.toFixed(2); 
+			}
+			
 			// update dataset rom values
 			ctxrhipInstance.data.datasets[0].data.push(rom_right);
 			ctxlhipInstance.data.datasets[0].data.push(rom_left);
