@@ -48,6 +48,7 @@ var ascii_msg;
 // vars used for SW calibration
 var rom_left_calibration = 0
 var rom_right_calibration = 0;
+var is_calibrated = false;
 // session vars
 var load_session_rom_right = [];
 var load_session_rom_left = [];
@@ -64,7 +65,7 @@ serial_swalker.on('data', function(data){
     let msg_list_sw = ascii_msg[0];
     is_first_data[0] = ascii_msg[1];
     for(i=0; i < msg_list_sw.length; i++){
-		console.log(msg_list_sw[i])
+		
 		if(msg_list_sw[i].includes("=") & msg_list_sw[i].includes(',')){
 			let data_vector = msg_list_sw[i].split('=')[1].split(',');
 			
@@ -224,25 +225,41 @@ fs.readFile(therapyConfigPath, (err, data) => {
     patient_leg_length = config.leg_length;
 });
 
+
 udpServer_VR.on('connection', function(socket){
 	socket.nickname = "conVR";
 	var clientname = socket.nickname;
 	sockets[clientname] = socket;
+	
+	 socket.emit('monitoring:connection_status',{
+		device: "vr",
+		status:0});
+               
+	//nos aseguramos que se calibra al conectar la gafa
+	is_calibrated = false;
+	configureStartPos()
 
 	console.log('There is a new connection !!');
 	is_client_connected = true;
 	socket.on('data',function(data){
-		console.log(data.toString());
+	//	console.log(data.toString());
 		if (data.toString() == "#ready"){
 			
+		
 			var timer = setInterval(function () {
+                                
 				if(is_client_connected){
-					
-					is_swalker_connected = true;
-					if(is_swalker_connected){
-					    var json_msg = {rom: [rom_right, rom_left], emg: envelope_emg, leg: parseInt(patient_leg_length)}
-					    console.log(json_msg)
-					    socket.write(JSON.stringify(json_msg))
+					if( is_calibrated){
+			                
+						is_swalker_connected = true;
+                        if(envelope_emg.length == 0){
+							envelope_emg =[0,0,0,0,0,0,0,0];
+                        }
+						if(is_swalker_connected){
+							var json_msg = {rom: [(rom_right-parseFloat(rom_right_calibration)), (rom_left-parseFloat(rom_left_calibration))], emg: envelope_emg, leg: parseInt(patient_leg_length)}
+						   // console.log(json_msg)
+							socket.write(JSON.stringify(json_msg))
+						}
 					}
 				} else{
 					clearInterval(timer)
@@ -253,14 +270,23 @@ udpServer_VR.on('connection', function(socket){
 	socket.on('error', function(ex) {
 		console.log(ex);
 		is_client_connected = false;
+		 socket.emit('monitoring:connection_status',{
+               device: "vr",
+               status:1});
 	});
 	socket.on('end', function() {
 		console.log('VR data ended');
 		is_client_connected = false
+		 socket.emit('monitoring:connection_status',{
+               device: "vr",
+               status:1});
 	});
 	socket.on('close', function() {
 		console.log('VR data closed');
-		is_client_connected = false
+		is_client_connected = false;
+		 socket.emit('monitoring:connection_status',{
+               device: "vr",
+               status:1});
 	});
 });
 
@@ -470,13 +496,14 @@ io.on('connection', (socket) => {
         // Read therapy configuration from conf file
         fs.readFile(therapyConfigPath, (err, data) => {
             if (err) throw err;
+            console.log(data);
             var config = JSON.parse(data);
             var terapist_id = "SELECT idtabla_terapeutas from tabla_terapeutas where NombreTerapeuta in ('" + (config.therapist_name.split(" "))[0] +"') AND ApellidoTerapeuta in ('" + (config.therapist_name.split(" "))[1] +"'); ";
             var patient_id = "SELECT idtabla_pacientes from tabla_pacientes where NombrePaciente in ('" + (config.patient_name.split(" "))[0] +"') AND ApellidoPaciente in ('" + (config.patient_name.split(" "))[(config.patient_name.split(" ").length) -1] +"'); ";
             var IDs = terapist_id + patient_id
             con.query(IDs , [1,2], function (err, result) {
                 if (err) throw err;
-		console.log(result)
+				console.log(result)
                 patient_id = result[1][0].idtabla_pacientes;
                 terapist_id = result[0][0].idtabla_terapeutas;
                 patient_leg_length = config.leg_length;
@@ -1138,8 +1165,8 @@ io.on('connection', (socket) => {
         load = 0;
         rom_right = 0;
         rom_left = 0;
-        rom_right_calibration = 0;
-        rom_left_calibration = 0;
+       // rom_right_calibration = 0;
+       // rom_left_calibration = 0;
         // EMG
         //emg_activity_vector = [];
         //emg_binary_activation_vector = [];
@@ -1171,14 +1198,15 @@ io.on('connection', (socket) => {
         record_therapy = false;
 
         console.log("Duration of the therapy:" + ((time_stamp_vector[time_stamp_vector.length - 1] - time_stamp_vector[0]) / 1000.00 / 60.00).toString());
-
+		is_calibrated = false;
     });
 });
 
 // Configure swalker to start the therapy. Set ROM calibration in stance position.
-function configureStartPos(romR, romL) {
+function configureStartPos() {
     console.log("ROM calibration");
-
+    is_calibrated = true;
+    console.log(is_calibrated);
     rom_left_calibration = rom_left;
     rom_right_calibration = rom_right;
 
@@ -1253,7 +1281,7 @@ function connect_bt_device(socket, bt_object, status_boolean, str_device){
 							
 					// case SWalker
 					if ( str_device == 'sw'){
-						if (devices[i].name == swBluetoothName){
+						if (devices[i].name == swBluetoothName | devices[i].name == "00:06:66:F2:4C:EE"){
 							console.log("[Bt] Device found. Trying connection...")
 							deviceNotFound = false;
 						}
@@ -1278,7 +1306,6 @@ function connect_bt_device(socket, bt_object, status_boolean, str_device){
 						.catch(function(err) {
 							// The device has not been found.
 							var deviceNotFound = false;
-							connected_PMSensors_addresses.pop(device_address);
 							console.log('[Error] Device: ' + device_name , err);
 							
 							// message status in case WALKERII interface

@@ -473,8 +473,9 @@ window.onload = function() {
 			document.getElementById("connect_swalker").value = "on";
 			document.getElementById("connect_swalker").innerHTML = "Desconectar SWalker";
 			document.getElementById("connect_swalker").style.background = "#4eb14e";
-		}		
+		} 
 			
+							
 		if (is_swalker_connected){
 					
 			// show y axis label and ticks
@@ -731,7 +732,7 @@ window.onload = function() {
 				socket.emit('monitoring:enable_vr');
 		}	
 	}
-	
+	/*
 	document.getElementById("continue").onclick = function() {
 		socket.emit('monitoring:configure_robot');
 		var myTimer;
@@ -750,6 +751,7 @@ window.onload = function() {
 				}
 		}	
 	}
+	* */
 	// Start stop interaction
 	document.getElementById("start_stop").onclick = function() {
 		// Move to the start position and configure the robot with the therapy settings
@@ -763,8 +765,16 @@ window.onload = function() {
 					
 					if (is_swalker_connected){
 						// show initial position modal (start swalker rom calibrations), then change button content
-						$("#modaltherapyadviceinitialposition").modal('show');
-						console.log("Mostramos el modal de la posicion inicial porque está el swalker conectado")
+						//$("#modaltherapyadviceinitialposition").modal('show');
+						//console.log("Mostramos el modal de la posicion inicial porque está el swalker conectado")
+						document.getElementById("calibrate").style.display = 'block';
+						document.getElementById("save_data").style.display = 'none';
+						document.getElementById("observations_div").style.display = 'block';
+						document.getElementById("start_stop").value = "start";
+						document.getElementById("start_stop").innerHTML = "START";
+						document.getElementById("start_stop").style.background = "#09c768";
+						document.getElementById("start_stop").style.borderColor = "#09c768";
+						
 					} else {
 						// change button content
 						var myTimer;
@@ -813,6 +823,7 @@ window.onload = function() {
 				socket.emit('monitoring:stop'); 
 				emptyJointGraphs();
 				empty_envelope_graphs();
+				document.getElementById("calibrate").style.display = 'none';
 			}
 		} else {
 			console.log("no device connected");
