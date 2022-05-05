@@ -492,6 +492,7 @@ window.onload = function() {
 			ctxrhipInstance.data.datasets[0].data.push(rom_right);
 			ctxlhipInstance.data.datasets[0].data.push(rom_left);
 			
+			
 			// update labels
 			var segundos = Math.trunc(updateCounter_rom/10);
 			var milisegundos = Math.trunc((updateCounter_rom/10 - segundos)*1000);
@@ -640,6 +641,7 @@ window.onload = function() {
 
 	document.getElementById("connect_swalker").onclick = function() {
 		// Start emg connection
+		console.log(document.getElementById("connect_swalker").value)
 		if (document.getElementById("connect_swalker").value == "off") {
 			document.getElementById("connect_swalker").value = "connecting";
 			document.getElementById("connect_swalker").style.background = "#808080";
@@ -648,6 +650,7 @@ window.onload = function() {
 
 		// Stop emg_connection
 		} else if (document.getElementById("connect_swalker").value == "on") {
+			console.log("clicked and swalker value on, should be disconnected")
 			document.getElementById("connect_swalker").value = "off";
 			document.getElementById("connect_swalker").innerHTML = "Conectar SWalker";
 			document.getElementById("connect_swalker").style.background = "#808080";
@@ -675,7 +678,7 @@ window.onload = function() {
 
 		// Stop emg_connection
 		} else if (document.getElementById("enable_emg").value == "on") {
-			
+
 			// end therapy if started
 			if (therapy_started){
 				document.getElementById("save_data").value = "not_saved";
@@ -687,12 +690,11 @@ window.onload = function() {
 				document.getElementById("start_stop").style.background = "#0968e4";
 				document.getElementById("start_stop").style.borderColor = "#0968e4";
 				therapy_started = false;
-				
 			}
 			socket.emit('monitoring:stop'); 
 			emptyJointGraphs();
 			empty_envelope_graphs();
-			
+
 			document.getElementById("enable_emg").value = "off";
 			document.getElementById("enable_emg").innerHTML = "Conectar EMG";
 			document.getElementById("enable_emg").style.background = "#808080";
@@ -712,6 +714,7 @@ window.onload = function() {
 			socket.emit('monitoring:disconnect_emg');
 		}
 	}
+	/*
 	document.getElementById("enable_vr").onclick = function() {
 		// Enable VR
 		if (document.getElementById("enable_vr").value == "off") {
@@ -731,7 +734,7 @@ window.onload = function() {
 				document.getElementById("enable_vr").style.background = "#808080";
 				socket.emit('monitoring:enable_vr');
 		}	
-	}
+	}*/
 	/*
 	document.getElementById("continue").onclick = function() {
 		socket.emit('monitoring:configure_robot');
@@ -752,6 +755,10 @@ window.onload = function() {
 		}	
 	}
 	* */
+	
+	document.getElementById("calibrate").onclick = function(){
+		socket.emit('monitoring:configure_robot')
+	}
 	// Start stop interaction
 	document.getElementById("start_stop").onclick = function() {
 		// Move to the start position and configure the robot with the therapy settings
@@ -1130,11 +1137,11 @@ socket.on('monitoring:connection_status', (data) => {
 			document.getElementById("enable_vr").value = "on";
 			document.getElementById("enable_vr").innerHTML = "VR Conectado";
 			document.getElementById("enable_vr").style.background = "#4eb14e";
-		} else if (status == 1 || status == 2){
+		} else {
 			console.log("error connection")
 			//change button color and text;
 			document.getElementById("enable_vr").value = "off";
-			document.getElementById("enable_vr").innerHTML = "Reconectar VR";
+			document.getElementById("enable_vr").innerHTML = "VR Desconectado";
 			document.getElementById("enable_vr").style.background = "#eb0a0a";
 		}
 	}

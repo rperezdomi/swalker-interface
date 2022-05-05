@@ -68,11 +68,13 @@ serial_swalker.on('data', function(data){
 		
 		if(msg_list_sw[i].includes("=") & msg_list_sw[i].includes(',')){
 			let data_vector = msg_list_sw[i].split('=')[1].split(',');
-			
+		//	console.log(data_vector);
 			if(data_vector.length == 4){	
 				// Data storage
+				
 				rom_left = parseFloat(data_vector[2]);
-				rom_right = parseFloat(data_vector[1]);
+			//	console.log(rom_left)
+					rom_right = parseFloat(data_vector[1]);
 				load = parseFloat(data_vector[0]);
 				lasthex_sw = "";
 				
@@ -251,14 +253,19 @@ udpServer_VR.on('connection', function(socket){
 				if(is_client_connected){
 					if( is_calibrated){
 			                
-						is_swalker_connected = true;
+						//is_swalker_connected = true;
                         if(envelope_emg.length == 0){
-							envelope_emg =[0,0,0,0,0,0,0,0];
-                        }
+						//	envelope_emg =[0,0,0,0,0,0,0,0];
+                        }                       //is_swalker_connected = true;
+						//rom_right = 0
+						//rom_left = 0
 						if(is_swalker_connected){
-							var json_msg = {rom: [(rom_right-parseFloat(rom_right_calibration)), (rom_left-parseFloat(rom_left_calibration))], emg: envelope_emg, leg: parseInt(patient_leg_length)}
-						   // console.log(json_msg)
-							socket.write(JSON.stringify(json_msg))
+							//var json_msg = {rom: [(rom_right-parseFloat(rom_right_calibration)), (rom_left-parseFloat(rom_left_calibration))], leg: parseInt(patient_leg_length)}
+						        var msg = ((rom_right-parseFloat(rom_right_calibration)).toFixed(2)).toString() + "|" + ((rom_left-parseFloat(rom_left_calibration)).toFixed(2)).toString() + "|" + patient_leg_length.toString() + "|" 
+ 							
+// console.log(json_msg)
+                                                        socket.write(msg)
+							//socket.write(JSON.stringify(json_msg))
 						}
 					}
 				} else{
@@ -600,7 +607,8 @@ io.on('connection', (socket) => {
 	
 	
 	//download acc excel
-	const workbook = new ExcelJS.Workbook();
+	if(is_delsys_connected){
+		const workbook = new ExcelJS.Workbook();
         const worksheetx = workbook.addWorksheet('X Axis');
         const worksheety = workbook.addWorksheet('Y Axis');
         const worksheetz = workbook.addWorksheet('Z Axis');
@@ -608,31 +616,30 @@ io.on('connection', (socket) => {
         worksheetx.addRow(["RF D X", "BF D X" ,"TA D X", "GM D X", "RF I X", "BF I X", "TA I X", "GM I X"])
         worksheety.addRow(["RF D Y", "BF D Y" ,"TA D Y", "GM D Y", "RF I Y", "BF I Y", "TA I Y", "GM I Y"])
         worksheetz.addRow(["RF D Z", "BF D Z" ,"TA D Z", "GM D Z", "RF I Z", "BF I Z", "TA I Z", "GM I Z"])
-	console.log(acc_all_data.length)
+		console.log(acc_all_data.length)
         for (var i = 0; i < acc_all_data.length; i++) {
-	    worksheetx.addRow([acc_all_data[i][0], acc_all_data[i][3] , acc_all_data[i][6], acc_all_data[i][9], acc_all_data[i][12], acc_all_data[i][15], acc_all_data[i][18], acc_all_data[i][21]]).commit()
-	    worksheety.addRow([acc_all_data[i][1], acc_all_data[i][4] ,acc_all_data[i][7], acc_all_data[i][10], acc_all_data[i][13], acc_all_data[i][16], acc_all_data[i][19], acc_all_data[i][22]]).commit()
-	    worksheetz.addRow([acc_all_data[i][2], acc_all_data[i][5] ,acc_all_data[i][8], acc_all_data[i][11], acc_all_data[i][14], acc_all_data[i][17], acc_all_data[i][20], acc_all_data[i][23]]).commit()
-		
-		
-	}
-	
-	workbook.xlsx.writeFile('all_acc_datax.xlsx');
-	
-	n = 1;
-	const limitedInterval = setInterval(() => {
-		if (n == 4){
-		    socket.emit("monitoring:downloadAccExcellx");
-		    console.log("sent")
-		
-		}
-		if(n == 5){
+			worksheetx.addRow([acc_all_data[i][0], acc_all_data[i][3] , acc_all_data[i][6], acc_all_data[i][9], acc_all_data[i][12], acc_all_data[i][15], acc_all_data[i][18], acc_all_data[i][21]]).commit()
+			worksheety.addRow([acc_all_data[i][1], acc_all_data[i][4] ,acc_all_data[i][7], acc_all_data[i][10], acc_all_data[i][13], acc_all_data[i][16], acc_all_data[i][19], acc_all_data[i][22]]).commit()
+			worksheetz.addRow([acc_all_data[i][2], acc_all_data[i][5] ,acc_all_data[i][8], acc_all_data[i][11], acc_all_data[i][14], acc_all_data[i][17], acc_all_data[i][20], acc_all_data[i][23]]).commit()
+			
+			
+		}	
+		workbook.xlsx.writeFile('all_acc_datax.xlsx');
+		n = 1;
+		const limitedInterval = setInterval(() => {
+			if (n == 4){
+				socket.emit("monitoring:downloadAccExcellx");
+				console.log("sent")
+			
+			}
+			if(n == 5){
 
-		    clearInterval(limitedInterval);	
-		}	 
-		n++
-		
-	}, 1000)
+				clearInterval(limitedInterval);	
+			}	 
+			n++
+			
+		}, 1000)
+	}
 	
 	//workbooky.xlsx.writeFile('all_acc_datay.xlsx');
 	//workbookz.xlsx.writeFile('all_acc_dataz.xlsx');
