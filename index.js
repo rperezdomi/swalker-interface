@@ -1454,6 +1454,19 @@ function decodeFloat(buf1, last_index){
 			}
 		}
 		
+		try{
+			//ROM CADERA
+			let rom_hip_r = Math.atan(-s1_accZ / -s1_accX)
+			let rom_hip_l = Math.atan(-s5_accZ / -s5_accX)
+			//ROM RODILLA
+			let rom_knee_r = Math.atan(-s1_accZ / s1_accX) + Math.atan(-s3_accZ / -s3_accX)
+			let rom_knee_l = Math.atan(-s5_accZ / s5_accX) + Math.atan(-s7_accZ / -s7_accX)
+
+			print(rom_hip_r)
+		}catch(e){
+			console.log("error calculatims ROM")
+		}
+		
 		index_channel ++
 		
 	}
