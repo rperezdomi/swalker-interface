@@ -1,84 +1,98 @@
 
-const path = require('path'); // Modulo de nodejs para trabajar con rutas
-const express = require('express'); // Configurar express
-const fs = require('fs'); //  File System module
-const net = require('net');
-const PLOTSAMPLINGTIME = 100; //ms
-const VRSAMPLINGRATE = 50;
-const swBluetoothName = 'RNBT-4CEE';
-const BluetoothClassicSerialportClient = require('bluetooth-classic-serialport-client');
-const serial_swalker = new BluetoothClassicSerialportClient();
 
-// Relative configuration file path:
-var therapyConfigPath = path.join(__dirname, 'config','therapySettings.json');
+// IMPORTACIÓN DE LIBRERÍAS / PAQUETES
+const path = require('path'); 										// Modulo de nodejs para trabajar con rutas
+const express = require('express'); 								// Modulo de nodejs para servir archivos de forma estática (imagenes, css, js)
+const fs = require('fs'); 											// Modulo de nodejs para manejo de archivos
+const net = require('net');											// Modulo de nodejs para manejo de sockets por protocolo TCP/IP
+const BluetoothClassicSerialportClient = require('bluetooth-classic-serialport-client');    // Modulo de nodejs para el manejo del puerto serie (bt)
 
-//////////////////////////////
-////////** SWalker**//////////
-//////////////////////////////
-var is_swalker_connected = false;
-var speed_char = 's';
-var direction_char = 's';
-var global_patient_weight = 1;
-var patient_leg_length = 0;
-var counter = 0;
-// Testing vars
+
+// Variables generales de sesión 
+const therapyConfigPath = path.join(__dirname, 'config','therapySettings.json');  // Ruta del archivo que almacena la configuración de la sesión (Estos datos se reciben por websocket desde therapy_settings.js)
+const PLOTSAMPLINGTIME = 100; 										// Frecuencia de envío de los datos recibidos del SW (peso y ROM) a therapy_monitoring.js. Este envío sucede a través de websockets
+const VRSAMPLINGRATE = 50;											// Frecuencia de envío de los datos a la app de VR. Este envío sucede a través del protocolo TCP/IP, con un socket aboertp en el puerto 41235
+
+
+//// variables generales para la conexión con el SWalker   ////
+///////////////////////////////////////////////////////////////
+
+const swBluetoothName = 'RNBT-4CEE'; 								// Nombre del dispositivo bluetooth del SW
+const serial_swalker = new BluetoothClassicSerialportClient();      // socket bluetooth abierto para la conexión con SWalker
+var is_swalker_connected = false;    								// variable que almacena el estado de la conexión bluetooth con SW. Por defecto: false: desconectado
+var therapy_speed = 's';              								// Variable que almacena la velocidad a la que estáconfigurada la sesión. Por defecto: s: baja.
+var direction_char = 's';			 								// Variable que almacena la dirección en la que se está moviendo el SWalker. Por defecto: s: stop.
+var global_patient_weight = 1;		 								// Variable que almacena el peso del sujeto. Por defecto: 1   (kg) Esta variable se usa para calcular el % soportado.
+var patient_leg_length = 0;          								// Variable que almacena la longitud de la pierna. Por defecto: 0 (cm). Esta variable es necesaria para el uso de la app de las huellas de VR.
+// Las siguientes variables contienen rangos de movimiento reales.  No son necesarias, se han usado para el testeo de la app. 
 var test_rom_right_vector = [36.5585, 36.5259, 36.4962, 36.4689, 36.4408, 36.3909, 36.335, 36.271, 36.1943, 36.0842, 35.9539, 35.8015, 35.6229, 35.3996, 35.1472, 34.8671, 34.5588, 34.2085, 33.8337, 33.4375, 33.021, 32.5716, 32.1055, 31.6253, 31.1309, 30.6092, 30.0759, 29.5333, 28.982, 28.4101, 27.8326, 27.2519, 26.6686, 26.0712, 25.4745, 24.881, 24.2907, 23.6928, 23.0991, 22.5103, 21.9251, 21.3314, 20.7416, 20.1566, 19.576, 18.9904, 18.4092, 17.8328, 17.26, 16.6806, 16.1042, 15.5317, 14.9625, 14.3888, 13.8194, 13.2551, 12.6957, 12.1344, 11.5788, 11.0296, 10.4863, 9.943, 9.4059, 8.8751, 8.35, 7.8256, 7.307, 6.7943, 6.2873, 5.782, 5.2825, 4.789, 4.3013, 3.8162, 3.3365, 2.8623, 2.3931, 1.9264, 1.4649, 1.0089, 0.55876, 0.11339, -0.32492, -0.75545, -1.1777, -1.592, -1.9966, -2.3906, -2.7733, -3.1449, -3.503, -3.8462, -4.1732, -4.483, -4.7732, -5.0422, -5.2883, -5.5107, -5.7056, -5.8703, -6.0025, -6.1013, -6.1635, -6.1873, -6.1715, -6.117, -6.0199, -5.8784, -5.691, -5.4588, -5.1776, -4.8459, -4.4624, -4.0296, -3.5434, -3.0028, -2.408, -1.7637, -1.0667, -0.31824, 0.47919, 1.3179, 2.1989, 3.1186, 4.0724, 5.0499, 6.0517, 7.0737, 8.1109, 9.1527, 10.2008, 11.2518, 12.3017, 13.3403, 14.3718, 15.3946, 16.4062, 17.397, 18.3728, 19.3328, 20.2749, 21.189, 22.0824, 22.9548, 23.805, 24.6222, 25.4163, 26.1884, 26.9377, 27.6538, 28.3466, 29.0165, 29.6621, 30.2707, 30.8549, 31.416, 31.9538, 32.4557, 32.9354, 33.3942, 33.8315, 34.2332, 34.613, 34.9714, 35.3072, 35.6047, 35.8803, 36.136, 36.3716, 36.5725, 36.7541, 36.9172, 37.0604, 37.1663, 37.2525, 37.3207, 37.3704, 37.3856, 37.3845, 37.3695, 37.3407, 37.2817, 37.2124, 37.1364, 37.0547, 36.9514, 36.8478, 36.7477, 36.6527, 36.5465, 36.4502, 36.367, 36.2969, 36.2222, 36.1618, 36.1168, 36.085, 36.046, 36.0174, 35.9986, 35.9863];
 var test_rom_left_vector = [36.5585, 36.5259, 36.4962, 36.4689, 36.4408, 36.3909, 36.335, 36.271, 36.1943, 36.0842, 35.9539, 35.8015, 35.6229, 35.3996, 35.1472, 34.8671, 34.5588, 34.2085, 33.8337, 33.4375, 33.021, 32.5716, 32.1055, 31.6253, 31.1309, 30.6092, 30.0759, 29.5333, 28.982, 28.4101, 27.8326, 27.2519, 26.6686, 26.0712, 25.4745, 24.881, 24.2907, 23.6928, 23.0991, 22.5103, 21.9251, 21.3314, 20.7416, 20.1566, 19.576, 18.9904, 18.4092, 17.8328, 17.26, 16.6806, 16.1042, 15.5317, 14.9625, 14.3888, 13.8194, 13.2551, 12.6957, 12.1344, 11.5788, 11.0296, 10.4863, 9.943, 9.4059, 8.8751, 8.35, 7.8256, 7.307, 6.7943, 6.2873, 5.782, 5.2825, 4.789, 4.3013, 3.8162, 3.3365, 2.8623, 2.3931, 1.9264, 1.4649, 1.0089, 0.55876, 0.11339, -0.32492, -0.75545, -1.1777, -1.592, -1.9966, -2.3906, -2.7733, -3.1449, -3.503, -3.8462, -4.1732, -4.483, -4.7732, -5.0422, -5.2883, -5.5107, -5.7056, -5.8703, -6.0025, -6.1013, -6.1635, -6.1873, -6.1715, -6.117, -6.0199, -5.8784, -5.691, -5.4588, -5.1776, -4.8459, -4.4624, -4.0296, -3.5434, -3.0028, -2.408, -1.7637, -1.0667, -0.31824, 0.47919, 1.3179, 2.1989, 3.1186, 4.0724, 5.0499, 6.0517, 7.0737, 8.1109, 9.1527, 10.2008, 11.2518, 12.3017, 13.3403, 14.3718, 15.3946, 16.4062, 17.397, 18.3728, 19.3328, 20.2749, 21.189, 22.0824, 22.9548, 23.805, 24.6222, 25.4163, 26.1884, 26.9377, 27.6538, 28.3466, 29.0165, 29.6621, 30.2707, 30.8549, 31.416, 31.9538, 32.4557, 32.9354, 33.3942, 33.8315, 34.2332, 34.613, 34.9714, 35.3072, 35.6047, 35.8803, 36.136, 36.3716, 36.5725, 36.7541, 36.9172, 37.0604, 37.1663, 37.2525, 37.3207, 37.3704, 37.3856, 37.3845, 37.3695, 37.3407, 37.2817, 37.2124, 37.1364, 37.0547, 36.9514, 36.8478, 36.7477, 36.6527, 36.5465, 36.4502, 36.367, 36.2969, 36.2222, 36.1618, 36.1168, 36.085, 36.046, 36.0174, 35.9986, 35.9863];
 var test_load_vector = [36.5585, 36.5259, 36.4962, 36.4689, 36.4408, 36.3909, 36.335, 36.271, 36.1943, 36.0842, 35.9539, 35.8015, 35.6229, 35.3996, 35.1472, 34.8671, 34.5588, 34.2085, 33.8337, 33.4375, 33.021, 32.5716, 32.1055, 31.6253, 31.1309, 30.6092, 30.0759, 29.5333, 28.982, 28.4101, 27.8326, 27.2519, 26.6686, 26.0712, 25.4745, 24.881, 24.2907, 23.6928, 23.0991, 22.5103, 21.9251, 21.3314, 20.7416, 20.1566, 19.576, 18.9904, 18.4092, 17.8328, 17.26, 16.6806, 16.1042, 15.5317, 14.9625, 14.3888, 13.8194, 13.2551, 12.6957, 12.1344, 11.5788, 11.0296, 10.4863, 9.943, 9.4059, 8.8751, 8.35, 7.8256, 7.307, 6.7943, 6.2873, 5.782, 5.2825, 4.789, 4.3013, 3.8162, 3.3365, 2.8623, 2.3931, 1.9264, 1.4649, 1.0089, 0.55876, 0.11339, -0.32492, -0.75545, -1.1777, -1.592, -1.9966, -2.3906, -2.7733, -3.1449, -3.503, -3.8462, -4.1732, -4.483, -4.7732, -5.0422, -5.2883, -5.5107, -5.7056, -5.8703, -6.0025, -6.1013, -6.1635, -6.1873, -6.1715, -6.117, -6.0199, -5.8784, -5.691, -5.4588, -5.1776, -4.8459, -4.4624, -4.0296, -3.5434, -3.0028, -2.408, -1.7637, -1.0667, -0.31824, 0.47919, 1.3179, 2.1989, 3.1186, 4.0724, 5.0499, 6.0517, 7.0737, 8.1109, 9.1527, 10.2008, 11.2518, 12.3017, 13.3403, 14.3718, 15.3946, 16.4062, 17.397, 18.3728, 19.3328, 20.2749, 21.189, 22.0824, 22.9548, 23.805, 24.6222, 25.4163, 26.1884, 26.9377, 27.6538, 28.3466, 29.0165, 29.6621, 30.2707, 30.8549, 31.416, 31.9538, 32.4557, 32.9354, 33.3942, 33.8315, 34.2332, 34.613, 34.9714, 35.3072, 35.6047, 35.8803, 36.136, 36.3716, 36.5725, 36.7541, 36.9172, 37.0604, 37.1663, 37.2525, 37.3207, 37.3704, 37.3856, 37.3845, 37.3695, 37.3407, 37.2817, 37.2124, 37.1364, 37.0547, 36.9514, 36.8478, 36.7477, 36.6527, 36.5465, 36.4502, 36.367, 36.2969, 36.2222, 36.1618, 36.1168, 36.085, 36.046, 36.0174, 35.9986, 35.9863];
-var i_test_rom_r = 0;
-var i_test_rom_l = Math.trunc(test_rom_left_vector.length/2);
-
-// vars of recorded therapy data
+// Variables utilizadas para la calibración del sw
+var rom_left_calibration = 0     									// ROM pierna izquierda (sw) en el momento de la calibración (cuando se pulsa el botón desde therapy_monitoring)
+var rom_right_calibration = 0;   									// ROM pierna derecha (sw) en el momento de la calibración (cuando se pulsa el botón desde therapy_monitoring)
+var is_calibrated = false;       									// Booleano para indicar si la calibración se ha realzado. Esta variable se usa para realizar una calibración automática siempre que se conecta la VR
+// Variables utilizadas para el almacenamiento de datos durante la sesión.
 var record_therapy = false;
-var time_stamp_vector = [];
-var therapy_speed = 's';
-// vars used to imus storage
-var is_first_data = [true, true, true, true];   //sw, imu1, imu2, imu3
-var is_imu1_connected = false;
-// vars used for swalker data storage
-var rom_left_vector = []
-var rom_right_vector = []
-var load_vector = []
-var direction_vector = [];
-// vars used for the swalker data reception
-var rom_left =0; 
-var rom_right= 0; 
-var load = 0;
-var ascii_msg;
-// vars used for SW calibration
-var rom_left_calibration = 0
-var rom_right_calibration = 0;
-var is_calibrated = false;
-// session vars
-var load_session_rom_right = [];
-var load_session_rom_left = [];
-var load_session_weight_gauge = [];
-var load_session_rom_right_objects = [];
-var load_session_rom_left_objects = [];
-var load_session_weight_gauge_objects = [];
+var rom_left = 0;            										// Variable utilizada para el almacenamiento del dato de ROM pierna izquierda (sw)
+var rom_right= 0;            										// Variable utilizada para el almacenamiento del dato de ROM pierna izquierda (sw)
+var load = 0;               										// Variable utilizada para el almacenamiento del dato de ROM pierna izquierda (sw)
+var time_stamp_vector = [];  										// lista que almacena todos los timestamps de los datos recibidos entre el inicio y fin de la sesón.
+var rom_left_vector = []     										// lista que almacena todos los datos de ROM pierna izquierda (sw) recibidos entre el inicio y fin de la sesón.
+var rom_right_vector = []    										// lista que almacena todos los datos de ROM pierna derecha (sw) recibidos entre el inicio y fin de la sesón.
+var load_vector = []         										// lista que almacena todos los datos de porcentaje (%) de peso soportado calculados entre el inicio y fin de la sesón.
+var direction_vector = [];  										// lista que almacena todos los datos de dirección del sw recibidos entre el inicio y fin de la sesón.
 
+
+//    variables generales para la adquisición de EMG con el software de adquisición EMGdataAcquisition.py     //
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+const client_delsys_start = new net.Socket();        				// socket abierto para el envío de comandos al software EMGdataAcquisition.py
+const client_delsys_data = new net.Socket();         				// socket abierto para la recepción de datos de EMG desde el software EMGdataAcquisition.py
+const DELSYS_PC_IP = '192.168.43.10';               				// Variable que almacena la IP del ordenador desde el cual se lanzan el TCU (delsys) y el software EMGdataAcquisition.py
+const DELSYS_START_PORT = 30000;                     				// Variable que almacena el puerto destinado al socket de envío de comandos a EMGdataAcquisition.py
+const DELSYS_DATA_PORT = 30002;                      				// Variable que almacena el puerto destinado al socket de recepción de datos de EMG desde EMGdataAcquisition.py
+var is_delsys_connected = false;                     				// Variable que almacena el estado de conexión del software EMGdataAcquisition.py
+var emg_msg = "";    												// Variable donde se almacena el último mensaje de EMG recibido desde EMGdataAcquisition.py, y que es enviado a therapy_monitoring.js para la representación en tiempo real
+
+
+// variables globales utilizadas en los procesos de parseo de datos 
+var is_first_data = [true, true, true, true];   //sw, imu1, imu2, imu3.  Esta variable se utiliza como input, en la función hex2a, para descartar el primer mensaje (por si no llega completo). 
+ 
+
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////                                                               RECEPCIÓN DE DATOS DEL SW A TRAVÉS DEL SOCKET DE BLUETOOTH                                                           ///////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// la función descrita a continuación se ejecuta automáticamente cada vez que se recibe un nuevo dato a través del socket de conexión con el SWalker
+
+var ascii_msg;
 var lasthex_sw = "";
-// SWalker data reception (bt)
+var msecondsFromLastMessage_swalker = 0;    // variable para controlar los milisegundos que han pasado desde la recepción del ultimo dato. Si la conexión bluetooth sigue activa o no, en caso de que no se reciba el mensaje de fallo de socket.
 serial_swalker.on('data', function(data){ 
-	
-    ascii_msg = hex2a_general(data, lasthex_sw, is_first_data[0]);
+	// Actualizamos los milisegundos desde la recepción del último mensaje
+	msecondsFromLastMessage_swalker = 0;
+	// parseamos el string de datos recibido en una lista de mensajes
+    ascii_msg = hex2a_general(data, lasthex_sw, is_first_data[0]);      // ascii_msg = lista de los mensajes individuales recibidos
+    is_first_data[0] = ascii_msg[1];                                    // Actualizamos el booleano que indica si se trata, o no, del primer dato recibido. 
+    
+    // parseo de los valores de interes, y almacenamiento en caso de que se esté realizando una sesión.
     let msg_list_sw = ascii_msg[0];
-    is_first_data[0] = ascii_msg[1];
     for(i=0; i < msg_list_sw.length; i++){
-		
 		if(msg_list_sw[i].includes("=") & msg_list_sw[i].includes(',')){
-			let data_vector = msg_list_sw[i].split('=')[1].split(',');
-		//	console.log(data_vector);
+			let data_vector = msg_list_sw[i].split('=')[1].split(',');     // parseamos cada uno de los mensajes recibidos y nos quedamos únicamente con la lista de datos de interés. 
 			if(data_vector.length == 4){	
 				// Data storage
-				
 				rom_left = parseFloat(data_vector[2]);
-			//	console.log(rom_left)
-					rom_right = parseFloat(data_vector[1]);
+				rom_right = parseFloat(data_vector[1]);
 				load = parseFloat(data_vector[0]);
 				lasthex_sw = "";
 				
 				if (record_therapy){
+					// Se almanenan los datos en una lista únicamente si el delsys no ha sido útilizado. En el caso contrario, el almacenamiento lo marca la recepción de datos del delsys (acelerometros).
+					// Esto se ha planteado así para no perder datos del delsys (frec delsys: 100Hz; frec sw: 10Hz)
 					if(! is_delsys_connected){
 						// swalker data
 						rom_left_vector.push(parseFloat(rom_left-rom_left_calibration));
@@ -88,51 +102,44 @@ serial_swalker.on('data', function(data){
 						direction_vector.push(direction_char);
 					}
 				}
-						
-				// store the data message into "dcm_msgData" variable, which will be sent to the client socket games.
-				let sw_msgData = "#" + msg_list_sw[i];	
-				//console.log(sw_msgData);
 				
 			} else {
+				// Si la cadena recibida no se corresponde con la que debería ser, guardamos este string. El próximo mensaje recibido será añadido a este.
 				lasthex_sw = '#' + msg_list_sw[i]
 			}
 		} else {
+			// Si la cadena recibida no se corresponde con la que debería ser, guardamos este string. El próximo mensaje recibido será añadido a este.
 			lasthex_sw = '#' + msg_list_sw[i]
 		}
 				
 	}
 }); 
 
+// Por definición, la librería utilizada para la conexión bluetooth emite un mensaje "closed" si se ha detectado el cierre del socket en el otro extremo. Es decir, si el SWalker ha sido apagado.
 serial_swalker.on('closed', function(){
 	console.log("connection closed");  
+	// Se emite un mensaje de estado de conexión a therapy_monitoring, para que modifique los atributos del botón de conexión del sw
 	sockets['websocket'].emit('monitoring:connection_status',{
 		 device: "sw",
 		 status:3
 	})
+	// Se realiza la desconexión/cierre del socket abierto para la conexión con sw
 	disconnect_bt_device(sockets['websocket'], serial_swalker, is_swalker_connected, "sw")
 
 })
 
-////////////////////////////////////
-//** DELSYS TRIGNO WIRELESS EMG **//
-//////////////////////(/////////////
-// The webserver is connected to a EMG Delsys device that streams
-// the emg data from the 8 sensors.
 
-const client_delsys_start = new net.Socket();
-const client_delsys_data = new net.Socket();
-const DELSYS_PC_IP = '192.168.43.9';
-const DELSYS_START_PORT = 30000;
-const DELSYS_DATA_PORT = 30002;
-var is_delsys_connected = false;
-var emg_msg = "";    // var sent to therapy_monitoring.js
-//var emg_binary_activation_vector = [];
-//var emg_activity_vector = [];
-var envelope_emg = []
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////                                                          RECEPCIÓN DE DATOS DEL  DELSYS TRIGNO WIRELESS EMG -  SOCKET TCP/IP                                                       ///////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 
 var received_data = "";
+var msecondsFromLastMessage_delsys = 0
 client_delsys_data.on('data', function(data) {
     var datos = data.toString();
+    msecondsFromLastMessage_delsys = 0
     var msg_data = false;
     for (let index = 0; index < datos.length; index++) {
         msg_data = true;
@@ -140,8 +147,6 @@ client_delsys_data.on('data', function(data) {
             received_data = received_data + datos.charAt(index);
             if (datos.charAt(index) == '}') {
                 emg_msg = received_data;
-		envelope_emg = JSON.parse(emg_msg).envelope_emg
-                //console.log(JSON.parse(emg_msg).envelope_emg)
                 received_data = "";
             }
         }
@@ -158,30 +163,36 @@ var tibiaL_accX = 0;
 var index_channel = 1;
 
 var acc_all_data = [];
-var s1_accX_ = 0;
+var s1_accX = 0;
 var s1_accY = 0;
 var s1_accZ = 0;
-var s2_accX_ = 0;
+var s2_accX = 0;
 var s2_accY = 0;
 var s2_accZ = 0;
-var s3_accX_ = 0;
+var s3_accX = 0;
 var s3_accY = 0;
 var s3_accZ = 0;
-var s4_accX_ = 0;
+var s4_accX = 0;
 var s4_accY = 0;
 var s4_accZ = 0;
-var s5_accX_ = 0;
+var s5_accX = 0;
 var s5_accY = 0;
 var s5_accZ = 0;
-var s6_accX_ = 0;
+var s6_accX = 0;
 var s6_accY = 0;
 var s6_accZ = 0;
-var s7_accX_ = 0;
+var s7_accX = 0;
 var s7_accY = 0;
 var s7_accZ = 0;
-var s8_accX_ = 0;
+var s8_accX = 0;
 var s8_accY = 0;
 var s8_accZ = 0;
+
+var acc_rom_hip_vector = []
+var rom_hip_r = 0
+var rom_hip_l = 0
+var rom_hip_r_cal = 0;
+var rom_hip_l_cal = 0;
 
 client_delsys_acc.on('data', function(msg) {
     var len = Buffer.byteLength(msg)
@@ -194,8 +205,8 @@ client_delsys_acc.on('data', function(msg) {
 		//emg_binary_activation_vector.push(JSON.parse(emg_msg).binary_activation_values);
 
 		// acc
-		tibiaR_accX_vector.push(tibiaR_accX)
-		tibiaL_accX_vector.push(tibiaL_accX)
+		//tibiaR_accX_vector.push(tibiaR_accX)
+		//tibiaL_accX_vector.push(tibiaL_accX)
 		
 		// swalker data    (si ni está conectado, se almacenarán 0s)
 		rom_left_vector.push(parseFloat(rom_left-rom_left_calibration));
@@ -205,7 +216,7 @@ client_delsys_acc.on('data', function(msg) {
 		
 		// acc
 		acc_all_data.push([s1_accX, s1_accY, s1_accZ, s2_accX, s2_accY, s2_accZ, s3_accX, s3_accY, s3_accZ, s4_accX, s4_accY, s4_accZ, s5_accX, s5_accY, s5_accZ, s6_accX, s6_accY, s6_accZ,s7_accX, s7_accY, s7_accZ, s8_accX, s8_accY, s8_accZ])
-				    
+		acc_rom_hip_vector.push([rom_hip_r, rom_hip_l])		    
 	}
     
 });
@@ -254,9 +265,7 @@ udpServer_VR.on('connection', function(socket){
 					if( is_calibrated){
 			                
 						//is_swalker_connected = true;
-                        if(envelope_emg.length == 0){
-						//	envelope_emg =[0,0,0,0,0,0,0,0];
-                        }                       //is_swalker_connected = true;
+                      //is_swalker_connected = true;
 						//rom_right = 0
 						//rom_left = 0
 						if(is_swalker_connected){
@@ -535,7 +544,8 @@ io.on('connection', (socket) => {
 						    if (is_swalker_connected){
 							    var total_length = rom_right_vector.length;
 						    } else if (is_delsys_connected){
-							    var total_length = tibiaL_accX_vector.length;
+							    //var total_length = tibiaL_accX_vector.length;
+							    var total_length = acc_rom_hip_vector.length;
 							    //var total_length = emg_activity_vector.length;
 						    } 
 						    
@@ -561,7 +571,8 @@ io.on('connection', (socket) => {
 								    insertDataRows = "(" + (sessionID).toString() + "," + (time_stamp_vector[index]).toString() +","+ 
 												    (rom_left_vector[index]).toString() + "," + (rom_right_vector[index]).toString()  + "," + (load_vector[index]).toString() + "," + (dir_vector).toString() +  "," + 
 												    //(emg_activity_vector[index][0]).toString() + "," + (emg_binary_activation_vector[index][0]).toString() + "," + (emg_activity_vector[index][1]).toString() + "," + (emg_binary_activation_vector[index][1]).toString() +  "," + (emg_activity_vector[index][2]).toString()  + "," + (emg_binary_activation_vector[index][2]).toString()+  "," + (emg_activity_vector[index][3]).toString()  + "," + (emg_binary_activation_vector[index][3]).toString() +  "," + (emg_activity_vector[index][4]).toString()  + "," + (emg_binary_activation_vector[index][4]).toString() +  "," + (emg_activity_vector[index][5]).toString()  + "," + (emg_binary_activation_vector[index][5]).toString() +  "," + (emg_activity_vector[index][6]).toString()  + "," + (emg_binary_activation_vector[index][6]).toString()+  "," + (emg_activity_vector[index][7]).toString()  + "," + (emg_binary_activation_vector[index][7]).toString() + 
-												    tibiaL_accX_vector[index].toString() + "," + tibiaR_accX_vector[index].toString() +  ");"
+												    //tibiaL_accX_vector[index].toString() + "," + tibiaR_accX_vector[index].toString() +  ");"
+												    acc_rom_hip_vector[index][1].toString() + "," + acc_rom_hip_vector[index][0] + ");"
 								    //var sql = "INSERT INTO data_sessions (idSesion, Date, left_hip, right_hip, weight_gauge, direction, emg_muscle_activity_s1,  muscle_binary_activation_s1, emg_muscle_activity_s2,  muscle_binary_activation_s2, emg_muscle_activity_s3,  muscle_binary_activation_s3,  emg_muscle_activity_s4,  muscle_binary_activation_s4,  emg_muscle_activity_s5,  muscle_binary_activation_s5, emg_muscle_activity_s6,  muscle_binary_activation_s6, emg_muscle_activity_s7,  muscle_binary_activation_s7, emg_muscle_activity_s8, muscle_binary_activation_s8, accX_s7, accY_s7, accZ_s7, accX_s3, accY_s3, accZ_s3) VALUES " + insertDataRows;
 								    var sql = "INSERT INTO data_sessions (idSesion, Date, left_hip, right_hip, weight_gauge, direction, accX_s7, accX_s3) VALUES " + insertDataRows;
 								    
@@ -569,12 +580,11 @@ io.on('connection', (socket) => {
 							    
 							    
 							    } else if(is_delsys_connected){
-							    
 								    // emg connected. No swalker.
 								    insertDataRows = "(" + (sessionID).toString() + "," + (time_stamp_vector[index]).toString() +","+ 
 												    //(emg_activity_vector[index][0]).toString() + "," + (emg_binary_activation_vector[index][0]).toString() + "," + (emg_activity_vector[index][1]).toString() + "," + (emg_binary_activation_vector[index][1]).toString() +  "," + (emg_activity_vector[index][2]).toString()  + "," + (emg_binary_activation_vector[index][2]).toString()+  "," + (emg_activity_vector[index][3]).toString()  + "," + (emg_binary_activation_vector[index][3]).toString() +  "," + (emg_activity_vector[index][4]).toString()  + "," + (emg_binary_activation_vector[index][4]).toString() +  "," + (emg_activity_vector[index][5]).toString()  + "," + (emg_binary_activation_vector[index][5]).toString() +  "," + (emg_activity_vector[index][6]).toString()  + "," + (emg_binary_activation_vector[index][6]).toString()+  "," + (emg_activity_vector[index][7]).toString()  + "," + (emg_binary_activation_vector[index][7]).toString() + 
-												    tibiaL_accX_vector[index].toString() + "," + tibiaR_accX_vector[index].toString() +  ");"
-
+												    //tibiaL_accX_vector[index].toString() + "," + tibiaR_accX_vector[index].toString() +  ");"
+													acc_rom_hip_vector[index][1].toString() + "," + acc_rom_hip_vector[index][0].toString() + ");"
 								    //var sql = "INSERT INTO data_sessions (idSesion, Date, emg_muscle_activity_s1,  muscle_binary_activation_s1, emg_muscle_activity_s2,  muscle_binary_activation_s2, emg_muscle_activity_s3,  muscle_binary_activation_s3,  emg_muscle_activity_s4,  muscle_binary_activation_s4,  emg_muscle_activity_s5,  muscle_binary_activation_s5, emg_muscle_activity_s6,  muscle_binary_activation_s6, emg_muscle_activity_s7,  muscle_binary_activation_s7, emg_muscle_activity_s8, muscle_binary_activation_s8, accX_s7, accY_s7, accZ_s7, accX_s3, accY_s3, accZ_s3) VALUES " + insertDataRows;
 								    var sql = "INSERT INTO data_sessions (idSesion, Date, accX_s7,accX_s3) VALUES " + insertDataRows;
 								    
@@ -616,7 +626,7 @@ io.on('connection', (socket) => {
         worksheetx.addRow(["RF D X", "BF D X" ,"TA D X", "GM D X", "RF I X", "BF I X", "TA I X", "GM I X"])
         worksheety.addRow(["RF D Y", "BF D Y" ,"TA D Y", "GM D Y", "RF I Y", "BF I Y", "TA I Y", "GM I Y"])
         worksheetz.addRow(["RF D Z", "BF D Z" ,"TA D Z", "GM D Z", "RF I Z", "BF I Z", "TA I Z", "GM I Z"])
-		console.log(acc_all_data.length)
+		
         for (var i = 0; i < acc_all_data.length; i++) {
 			worksheetx.addRow([acc_all_data[i][0], acc_all_data[i][3] , acc_all_data[i][6], acc_all_data[i][9], acc_all_data[i][12], acc_all_data[i][15], acc_all_data[i][18], acc_all_data[i][21]]).commit()
 			worksheety.addRow([acc_all_data[i][1], acc_all_data[i][4] ,acc_all_data[i][7], acc_all_data[i][10], acc_all_data[i][13], acc_all_data[i][16], acc_all_data[i][19], acc_all_data[i][22]]).commit()
@@ -647,7 +657,7 @@ io.on('connection', (socket) => {
 	
 	//socket.emit("monitoring:downloadAccExcelly");
 	//socket.emit("monitoring:downloadAccExcellz");
-	console.log("send")
+	//console.log("send")
     });
 
     //DELETE SESSION FROM DATABASE
@@ -718,8 +728,8 @@ io.on('connection', (socket) => {
             { header: 'Left MG muscle activity', key: 'emg_muscle_activity_s8', width: 20 },
             { header: 'Left MG muscle activation (1/0)', key: 'muscle_binary_activation_s8', width: 30 },
             * */
-            { header: 'Left Tibia AccX', key: 'accX_s7', width: 30 },
-            { header: 'Right Tibia AccX', key: 'accX_s3', width: 30 },
+            { header: 'Left hip ROM (acc)', key: 'accX_s7', width: 30 },
+            { header: 'Right hip ROM (acc)', key: 'accX_s3', width: 30 },
            
 
         ];
@@ -749,8 +759,8 @@ io.on('connection', (socket) => {
             { header: 'Right Hip Real', key: 'right_hip', width: 10 },
             { header: 'Weigth Gauge', key: 'weight_gauge', width: 20 },
             { header: 'Direction', key: 'direction', width: 20 },
-            { header: 'Left Tibia AccX', key: 'accX_s7', width: 30 },
-            { header: 'Right Tibia AccX', key: 'accX_s3', width: 30 },
+            { header: 'Left Hip ROM (acc)', key: 'accX_s7', width: 30 },
+            { header: 'RighHip ROM (acc)', key: 'accX_s3', width: 30 },
         ];
         var sql = "SELECT * FROM data_sessions;";
         console.log(sql);
@@ -766,6 +776,9 @@ io.on('connection', (socket) => {
 
     //DOWNLOAD SESSION DATA (DATABASE)
     socket.on('load_session_data',function( idsesion){
+
+		let load_session_rom_left = [];
+		let load_session_rom_left_objects = [];
         // store the ROM values for the summary
         var sql = "SELECT left_hip FROM data_sessions WHERE idSesion=" + idsesion.toString() + ";";
         con.query(sql, function (err, rom_left_data) {
@@ -776,6 +789,8 @@ io.on('connection', (socket) => {
             }
             
         });
+		let load_session_rom_right = [];   
+		let load_session_rom_right_objects = [];
         // store the ROM values for the summary
         var sql = "SELECT right_hip FROM data_sessions WHERE idSesion=" + idsesion.toString() + ";";
         con.query(sql, function (err, rom_right_data) {
@@ -785,7 +800,8 @@ io.on('connection', (socket) => {
                 load_session_rom_right.push(load_session_rom_right_objects[i].right_hip)
             }            
         });
-        
+        let load_session_weight_gauge = [];
+		let load_session_weight_gauge_objects = [];
         // store the weight supported values for the summary
         var sql = "SELECT weight_gauge FROM data_sessions WHERE idSesion=" + idsesion.toString() + ";";
         con.query(sql, function (err, rom_right_data) {
@@ -862,19 +878,18 @@ io.on('connection', (socket) => {
     socket.on('traction:message', (data) => {
 		//Get command value
 		direction_char  = data.direction_char;
-		speed_char = therapy_speed;
 		if (therapy_speed == "high"){
-			speed_char = 'f';
+			therapy_speed = 'f';
 		} else if (therapy_speed == 'slow'){
-			speed_char = 's';
+			therapy_speed = 's';
 		} else{
-			speed_char = 'n';
+			therapy_speed = 'n';
 		}
 
 		var cmd = ''
 		//Command var to send
 		if (direction_char == 'b' | direction_char == 'f'){
-			cmd = '#'+ direction_char + speed_char;
+			cmd = '#'+ direction_char + therapy_speed;
 		} else {
 			cmd = '#'+ direction_char;
 		}
@@ -892,29 +907,35 @@ io.on('connection', (socket) => {
         socket.emit('monitoring:jointData', {
             // SWALKER
             swalker_connection_status: is_swalker_connected,
-            //swalker_connection_status: true,
             load: (parseFloat(load)/global_patient_weight)*100,
-            //load: (parseFloat(test_load_vector[i_test_rom_r])/global_patient_weight)*100,
-            //rom_right: test_rom_right_vector[i_test_rom_r],
             rom_right: (rom_right - parseFloat(rom_right_calibration)),
             rom_left: (rom_left - parseFloat(rom_left_calibration)),
-            //rom_left: test_rom_left_vector[i_test_rom_l],
             // EMG
             emg: emg_msg,
             emg_connection_status: is_delsys_connected,
         })
-	/*
-	if(i_test_rom_r >= (test_rom_right_vector.length -1 )){
-	    i_test_rom_r = 0;
-	} else {
-	    i_test_rom_r = i_test_rom_r+5;
-	}
-	if(i_test_rom_l >= (test_rom_right_vector.length - 1)){
-	    i_test_rom_l = 0;
-	} else {
-	    i_test_rom_l = i_test_rom_l+5;
-	}*/
-	
+        
+        if(is_swalker_connected){
+			msecondsFromLastMessage_swalker += PLOTSAMPLINGTIME;
+			if (msecondsFromLastMessage_swalker > 15000){
+				disconnect_bt_device(socket, serial_swalker, is_swalker_connected, "sw");
+				msecondsFromLastMessage_swalker = 0;
+			}
+		}
+		
+		 if(is_delsys_connected){
+			msecondsFromLastMessage_delsys += PLOTSAMPLINGTIME;
+			if (msecondsFromLastMessage_delsys > 20000){
+				msecondsFromLastMessage_delsys = 0;
+				 socket.emit('monitoring:connection_status', {
+                    device: "emg",
+                    // status--> 0: connect, 1: disconnect, 2: not paired, 3: conn error, 4: conn closed
+                    status: 3
+                }) 
+                is_delsys_connected = false;
+			}
+		}
+
     }, PLOTSAMPLINGTIME);
 
     // Save therapy settings in a JSON file.
@@ -1178,10 +1199,13 @@ io.on('connection', (socket) => {
         //emg_activity_vector = [];
         //emg_binary_activation_vector = [];
         // ACC
-        tibiaR_accX_vector = [];
+        /*tibiaR_accX_vector = [];
         tibiaR_accX = 0;
         tibiaL_accX_vector = [];
-        tibiaL_accX = 0;
+        tibiaL_accX = 0;*/
+        acc_rom_hip_vector = [];
+        rom_hip_l_cal = rom_hip_l;
+		rom_hip_r_cal = rom_hip_r;
 
         // Start recording
         record_therapy = true;
@@ -1216,6 +1240,11 @@ function configureStartPos() {
     console.log(is_calibrated);
     rom_left_calibration = rom_left;
     rom_right_calibration = rom_right;
+    
+    if(is_delsys_connected){
+		rom_hip_l_cal = rom_hip_l;
+		rom_hip_r_cal = rom_hip_r;
+	}
 
 }
 
@@ -1380,6 +1409,7 @@ function disconnect_bt_device(socket, bt_object, status_boolean, str_device){
 	
 }
 
+
 function decodeFloat(buf1, last_index){
 	let index_channel = last_index
 
@@ -1398,13 +1428,14 @@ function decodeFloat(buf1, last_index){
 		
 		posInBuf = posInBuf+4;
 		
-		if(record_therapy){
+		//if(record_therapy){
 			if (index_channel  == 1){   
 			    s1_accX = float
 			} else if (index_channel  == 2){   
 			    s1_accY = float
 			} else if (index_channel == 3){
 			    s1_accZ = float
+			    //console.log(s1_accX + "    -    " + s1_accY + "    -     " + s1_accZ)
 			} else if (index_channel  == 4){   
 			    s2_accX = float
 			} else if (index_channel  == 5){   
@@ -1452,18 +1483,25 @@ function decodeFloat(buf1, last_index){
 			} else if(index_channel == 48){
 			    index_channel = 0;
 			}
-		}
+		//}
 		
 		try{
 			//ROM CADERA
-			let rom_hip_r = Math.atan(-s1_accZ / -s1_accX)
-			let rom_hip_l = Math.atan(-s5_accZ / -s5_accX)
+			rom_hip_r = (180* (Math.atan(-s1_accZ/s1_accX)) / Math.PI) - rom_hip_r_cal;
+			if(isNaN(rom_hip_r)){
+				rom_hip_r = 0;
+			}
+			rom_hip_l = (180* (Math.atan(-s5_accZ/s5_accX)) / Math.PI) - rom_hip_l_cal;
+			if(isNaN(rom_hip_l)){
+				rom_hip_l = 0;
+			}
 			//ROM RODILLA
-			let rom_knee_r = Math.atan(-s1_accZ / s1_accX) + Math.atan(-s3_accZ / -s3_accX)
-			let rom_knee_l = Math.atan(-s5_accZ / s5_accX) + Math.atan(-s7_accZ / -s7_accX)
-
-			print(rom_hip_r)
+			let rom_knee_r = 180* (Math.atan(-s1_accZ / -s1_accX) + Math.atan(-s3_accZ / s3_accX)) / Math.PI
+			let rom_knee_l = 180* (Math.atan(-s5_accZ / -s5_accX) + Math.atan(-s7_accZ / s7_accX)) / Math.PI
+			
+			
 		}catch(e){
+			console.log(e)
 			console.log("error calculatims ROM")
 		}
 		

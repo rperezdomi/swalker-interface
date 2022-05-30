@@ -135,7 +135,11 @@ socket.on('datasessions', function(datasessions) {
       elements: {
         line: {
           tension: 0.1 // disables bezier curves
-        }
+        },
+        point: {
+			radius: 0
+		}
+        
       }
     };
   
@@ -177,14 +181,19 @@ socket.on('datasessions', function(datasessions) {
     console.log(r_rom)
     for (i=0; i< r_rom.length ; i++){
 		// update labels
-		var segundos = Math.trunc(i/100);
-		var milisegundos = Math.trunc((i/100 - segundos)*1000)
+		var segundos = Math.trunc(i/10);
+		var milisegundos = (i/10 - segundos)*100
 		var minutos = Math.trunc(segundos/60);
 		segundos = segundos - minutos*60; 
-		var label = minutos + '-' + segundos + '-' + milisegundos;
-		if(milisegundos.toString().length == 2){
-			var label = minutos + '-' + segundos + '-0' + milisegundos;
+		if(Math.trunc(milisegundos).toString().length == 1){
+			milisegundos = '00' + milisegundos;
+		} else if (Math.trunc(milisegundos).toString().length == 2){
+			milisegundos = '0' + milisegundos;
+		} else if (Math.trunc(milisegundos).toString().length == 0){
+			milisegundos = '000';
 		}
+		var label = minutos + '-' + segundos + '-' + milisegundos;
+		
 		ctxrhipInstance.data.labels.push(label)
 		ctxrhipInstance.data.datasets[0].data.push(r_rom[i])
 		ctxlhipInstance.data.labels.push(label)
@@ -198,42 +207,50 @@ socket.on('datasessions', function(datasessions) {
 	
 
 });
-	
+
+var dt
+var $dt
 socket.on('datostabla', function(datas) {
 
     console.log(datas);
     
 
     //Creación de DataTables
-    let $dt = $('#sessionsList');
-    let dt = $dt.DataTable({
-        "data": datas,
-        "columns": [
-            {// Se ingresa el control para agregar columnas y observar mas detalles del paciente
-                "className":      'details-control', // Se
-                "orderable":      false,
-                "data":           null,
-                "width": '4%',
-                "defaultContent":  ' <i class="fas fa-plus" style="color:#325AC8;" aria-hidden="true"></i>'  //ingreso el icono de más
-            },
-            {"width": '4%',
-            render: function(data, type, fullsessions, meta) {
-              // ACA controlamos la propiedad para des/marcar el input
-              return "<input type='checkbox'" + (fullsessions.checked ? ' checked' : '') + "/>";
-            },
-            orderable: false
-             },
-             {data: 'idtable_session'},
-            { data: 'date' },
-            { data: 'NombrePaciente' },
-            { data: 'ApellidoPaciente'},
-            { data: 'NumberSession'},
-            { data: 'gait_velocity'},
-            { data: 'observations'}
-            ],
-            
-    });
+    // comprobamos si la tabla ya ha sido creada. 
+    if(! $.fn.DataTable.isDataTable('#sessionsList')){
 
+		$dt = $('#sessionsList');
+		dt = $dt.DataTable({
+			"data": datas,
+			"columns": [
+				{// Se ingresa el control para agregar columnas y observar mas detalles del paciente
+					"className":      'details-control', // Se
+					"orderable":      false,
+					"data":           null,
+					"width": '4%',
+					"defaultContent":  ' <i class="fas fa-plus" style="color:#325AC8;" aria-hidden="true"></i>'  //ingreso el icono de más
+				},
+				{"width": '4%',
+				render: function(data, type, fullsessions, meta) {
+				  // ACA controlamos la propiedad para des/marcar el input
+				  return "<input type='checkbox'" + (fullsessions.checked ? ' checked' : '') + "/>";
+				},
+				orderable: false
+				 },
+				 {data: 'idtable_session'},
+				{ data: 'date' },
+				{ data: 'NombrePaciente' },
+				{ data: 'ApellidoPaciente'},
+				{ data: 'NumberSession'},
+				{ data: 'gait_velocity'},
+				{ data: 'observations'}
+				],
+				
+		});
+		
+	} 
+	
+	
     // Cuando hacen click en el checkbox del thead
     $dt.on('change', 'thead input', function(evt) {
         let checked = this.checked;
@@ -311,61 +328,83 @@ socket.on('datostabla', function(datas) {
     });
 })
 
-
+var $pd
+var pd;
 socket.on('patientdata',function(datapatient){
+	
+	// comprobamos si la tabla ya ha sido creada. En ese caso, la borramos su contenido y añadimos las nuevas columnas.
+  if(!$.fn.DataTable.isDataTable('#patientsList')){
+	  $pd = $('#patientsList');
+	  pd = $pd.DataTable({
+		  "data": datapatient,
+		  "columns": [
+			  {"width": '4%',
+			  render: function(data, type, fullistapacientes, meta) {
+				// ACA controlamos la propiedad para des/marcar el input
+				return "<input type='checkbox'" + (fullistapacientes.checked ? ' checked' : '') + "/>";
+			  },
+			  orderable: false
+			   },
+			   {data: 'idtabla_pacientes' },
+			  { data: 'NombrePaciente' },
+			  { data: 'ApellidoPaciente'},
+			  { data: 'patiente_age'},
+			  { data: 'patient_gender'},
+			  { data: 'patiente_weight'},
+			  { data: 'patient_height'},
+			  { data: 'leg_length'},
+			  { data: 'patient_active_rom'},
+			  { data: 'hip_joint'},
+			  { data: 'surgery'},
+			  { data: 'estado_fisico'},
+			  { data: 'estado_cognitivo'},
+			  
+			  ],
+			  
+		});
+  } else {
+	   $('#patientsList').DataTable().clear();
+	   
+		for (var i = 0; i < datapatient.length; i++) {	   	
+		 console.log(datapatient[i])	
+		 $('#patientsList').DataTable().row.add({
+			'idtabla_pacientes':datapatient[i].idtabla_pacientes,
+			'NombrePaciente': datapatient[i].NombrePaciente,
+			'ApellidoPaciente': datapatient[i].ApellidoPaciente,
+			'patiente_age': datapatient[i].patiente_age,
+			'patient_gender': datapatient[i].patient_gender,
+			'patiente_weight': datapatient[i].patiente_weight,
+			'patient_height': datapatient[i].patient_height,
+			'leg_length': datapatient[i].leg_length,
+			'patient_active_rom': datapatient[i].patient_active_rom,
+			'estado_fisico': datapatient[i].estado_fisico,
+			'estado_cognitivo': datapatient[i].estado_cognitivo,
+			'surgery': datapatient[i].surgery,
+			'hip_joint': datapatient[i].hip_joint,
+		  }).draw();
+		}
+     }
+  
+  
 
-  //for (var i = 0; i < datapatient.length; i++) {
-  //    listapacientes.push(datapatient[i]);
- // }
-  //console.log(listapacientes);
-  console.log(datapatient);
 
 
-  let $pd = $('#patientsList');
-  let pd = $pd.DataTable({
-      "data": datapatient,
-      "columns": [
-          {"width": '4%',
-          render: function(data, type, fullistapacientes, meta) {
-            // ACA controlamos la propiedad para des/marcar el input
-            return "<input type='checkbox'" + (fullistapacientes.checked ? ' checked' : '') + "/>";
-          },
-          orderable: false
-           },
-          { data: 'NombrePaciente' },
-          { data: 'ApellidoPaciente'},
-          { data: 'patiente_age'},
-          { data: 'patient_gender'},
-          { data: 'patiente_weight'},
-          { data: 'patient_height'},
-          { data: 'leg_length'},
-          { data: 'patient_active_rom'},
-          { data: 'hip_joint'},
-          { data: 'surgery'},
-          { data: 'estado_fisico'},
-          { data: 'estado_cognitivo'},
-          
-          ],
-          
+	// Cuando hacen click en los checkbox del tbody
+	$pd.on('change', 'tbody input', function() {
+	  let info = pd.row($(this).closest('tr')).data();
+	  // ACA accedemos a las propiedades del objeto
+	  info.checked = this.checked;
+	  if (this.checked){
+		  document.getElementById("edit_patient").disabled = false;
+		  document.getElementById("remove_patient").disabled = false;
+		  document.getElementById("download_list_patient").disabled = false;
+	  }else{
+		  document.getElementById("edit_patient").disabled = true;
+		  document.getElementById("remove_patient").disabled = true;
+		  document.getElementById("download_list_patient").disabled = true;
+	  }
+	 
   });
-
-
-        // Cuando hacen click en los checkbox del tbody
-        $pd.on('change', 'tbody input', function() {
-          let info = pd.row($(this).closest('tr')).data();
-          // ACA accedemos a las propiedades del objeto
-          info.checked = this.checked;
-          if (this.checked){
-              document.getElementById("edit_patient").disabled = false;
-              document.getElementById("remove_patient").disabled = false;
-              document.getElementById("download_list_patient").disabled = false;
-          }else{
-              document.getElementById("edit_patient").disabled = true;
-              document.getElementById("remove_patient").disabled = true;
-              document.getElementById("download_list_patient").disabled = true;
-          }
-         
-      });
 
 
     //ADD PATIENT
@@ -384,24 +423,11 @@ socket.on('patientdata',function(datapatient){
       let patgender = document.getElementById("gender").value;
       socket.emit('insertPatient',[patfname, patlname, patage, patweight, patleglength, patestadofisico, patestadocognitivo, patsurgery, pathipjoint, patheight, patmaxActiveRom, patgender]);
       //location.reload(true);
-      console.log("hola");
+      console.log("hola add patient");
       
+      // refresh database to rewrite datatables
+      socket.emit('refreshlist');
       
-      $('#patientsList').DataTable().row.add({
-          'NombrePaciente': patfname,
-          'ApellidoPaciente': patlname,
-          'patiente_age': patage,
-          'patient_gender': patgender,
-          'patiente_weight': patweight,
-          'patient_height': patheight,
-          'leg_length': patleglength,
-          'patient_active_rom': patmaxActiveRom,
-          'estado_fisico': patestadofisico,
-          'estado_cognitivo': patestadocognitivo,
-          'surgery': patsurgery,
-          'hip_joint': pathipjoint,
-          
-      }).draw();
     });
 
         //  suscribimos un listener al click del boton remove
@@ -482,6 +508,7 @@ socket.on('patientdata',function(datapatient){
 
       dt.row(indexrow).remove().draw();
       $('#patientsList').DataTable().row.add({
+        'idtabla_pacientes':checkeds[0].idtabla_pacientes,
         'NombrePaciente': checkeds[0].NombrePaciente,
         'ApellidoPaciente': checkeds[0].ApellidoPaciente,
         'patiente_age': checkeds[0].patiente_age,
@@ -503,28 +530,31 @@ socket.on('patientdata',function(datapatient){
 
 })
 
-
+var $td
+var td
 socket.on('therapistdata',function(datatherapist){
   console.log(datatherapist);
 
+  if(! $.fn.DataTable.isDataTable('#therapistList')){
+	$td = $('#therapistList');
+	  td = $td.DataTable({
+		  "data": datatherapist,
+		  "columns": [
+			  {"width": '4%',
+			  render: function(data, type, fullistater, meta) {
+				// ACA controlamos la propiedad para des/marcar el input
+				return "<input type='checkbox'" + (fullistater.checked ? ' checked' : '') + "/>";
+			  },
+			  orderable: false
+			   },
+			  { data: 'NombreTerapeuta' },
+			  { data: 'ApellidoTerapeuta'},
+			  { data: 'Centro'},
+			  ],
 
-  let $td = $('#therapistList');
-  let td = $td.DataTable({
-      "data": datatherapist,
-      "columns": [
-          {"width": '4%',
-          render: function(data, type, fullistater, meta) {
-            // ACA controlamos la propiedad para des/marcar el input
-            return "<input type='checkbox'" + (fullistater.checked ? ' checked' : '') + "/>";
-          },
-          orderable: false
-           },
-          { data: 'NombreTerapeuta' },
-          { data: 'ApellidoTerapeuta'},
-          { data: 'Centro'},
-          ],
-
-  });
+	  });
+  }
+  
 
 
 
