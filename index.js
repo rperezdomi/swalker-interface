@@ -12,9 +12,10 @@ const BluetoothClassicSerialportClient = require('bluetooth-classic-serialport-c
 const therapyConfigPath = path.join(__dirname, 'config','therapySettings.json');  // Ruta del archivo que almacena la configuración de la sesión (Estos datos se reciben por websocket desde therapy_settings.js)
 const PLOTSAMPLINGTIME = 100; 										// Frecuencia de envío de los datos recibidos del SW (peso y ROM) a therapy_monitoring.js. Este envío sucede a través de websockets
 const VRSAMPLINGRATE = 50;											// Frecuencia de envío de los datos a la app de VR. Este envío sucede a través del protocolo TCP/IP, con un socket aboertp en el puerto 41235
+var sockets = Object.create(null);        							// Variable donde se van a almacenar distintos sockets
 
 
-//// variables generales para la conexión con el SWalker   ////
+////     VARIABLES GENERALES RELACIONADAS CON EL SW        ////
 ///////////////////////////////////////////////////////////////
 
 const swBluetoothName = 'RNBT-4CEE'; 								// Nombre del dispositivo bluetooth del SW
@@ -44,8 +45,8 @@ var load_vector = []         										// lista que almacena todos los datos de 
 var direction_vector = [];  										// lista que almacena todos los datos de dirección del sw recibidos entre el inicio y fin de la sesón.
 
 
-//    variables generales para la adquisición de EMG con el software de adquisición EMGdataAcquisition.py     //
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//     VARIABLES GENERALES PARA LA RECEPCIÇON DE EMG EMGdataAcquisition.py     //
+/////////////////////////////////////////////////////////////////////////////////
 
 const client_delsys_start = new net.Socket();        				// socket abierto para el envío de comandos al software EMGdataAcquisition.py
 const client_delsys_data = new net.Socket();         				// socket abierto para la recepción de datos de EMG desde el software EMGdataAcquisition.py
@@ -56,21 +57,63 @@ var is_delsys_connected = false;                     				// Variable que almacen
 var emg_msg = "";    												// Variable donde se almacena el último mensaje de EMG recibido desde EMGdataAcquisition.py, y que es enviado a therapy_monitoring.js para la representación en tiempo real
 
 
-// variables globales utilizadas en los procesos de parseo de datos 
+//   VARIABLES GENERALES PARA LA RECEPCIÓN DE DATOS DE ACELEROMETRO  (TCU - DELSYS) //
+//////////////////////////////////////////////////////////////////////////////////////
+const client_delsys_acc = new net.Socket();                         // socket abierto para la recepción de datos de acelerómetro 
+const delsys_acc_port = 50042;                                      // Variable que almacena el puerto destinado al socket de recepción de datos de acelerómetro
+var index_channel = 1;												// Variable que almacena un índice para controlarel sensor al que pertenece cada dato de acelerometro.
+var acc_all_data = [];                                              // Lista de los 24 datos de acelerómetro (8 sensores x 3 ejes) [s1X, s1Y, s1Z, s2X, s2Y, s2Z, ...]
+var s1_accX = 0; 												    // Variable que almacena el dato de acelerómetro del sensor 1 eje X
+var s1_accY = 0;													// Variable que almacena el dato de acelerómetro del sensor 1 eje Y
+var s1_accZ = 0;													// Variable que almacena el dato de acelerómetro del sensor 1 eje Z
+var s2_accX = 0;													// Variable que almacena el dato de acelerómetro del sensor 2 eje X
+var s2_accY = 0;													// Variable que almacena el dato de acelerómetro del sensor 2 eje Y
+var s2_accZ = 0;													// Variable que almacena el dato de acelerómetro del sensor 2 eje Z
+var s3_accX = 0;													// Variable que almacena el dato de acelerómetro del sensor 3 eje X
+var s3_accY = 0;													// Variable que almacena el dato de acelerómetro del sensor 3 eje Y
+var s3_accZ = 0;													// Variable que almacena el dato de acelerómetro del sensor 3 eje Z
+var s4_accX = 0;													// Variable que almacena el dato de acelerómetro del sensor 4 eje x
+var s4_accY = 0;													// Variable que almacena el dato de acelerómetro del sensor 4 eje y
+var s4_accZ = 0;													// Variable que almacena el dato de acelerómetro del sensor 4 eje z
+var s5_accX = 0;													// Variable que almacena el dato de acelerómetro del sensor 5 eje X
+var s5_accY = 0;													// Variable que almacena el dato de acelerómetro del sensor 5 eje y
+var s5_accZ = 0;													// Variable que almacena el dato de acelerómetro del sensor 5 eje z
+var s6_accX = 0;													// Variable que almacena el dato de acelerómetro del sensor 6 eje X
+var s6_accY = 0;													// Variable que almacena el dato de acelerómetro del sensor 6 eje y				
+var s6_accZ = 0;													// Variable que almacena el dato de acelerómetro del sensor 6 eje z
+var s7_accX = 0;													// Variable que almacena el dato de acelerómetro del sensor 7 eje X
+var s7_accY = 0;													// Variable que almacena el dato de acelerómetro del sensor 7 eje y
+var s7_accZ = 0;													// Variable que almacena el dato de acelerómetro del sensor 7 eje Z
+var s8_accX = 0;													// Variable que almacena el dato de acelerómetro del sensor 8 eje X
+var s8_accY = 0;													// Variable que almacena el dato de acelerómetro del sensor 8 eje Y
+var s8_accZ = 0;													// Variable que almacena el dato de acelerómetro del sensor 8 eje Z
+var acc_rom_hip_vector = [] 										// lista que almacena los datos de ROM calculados a partir de acc Recto femoral (derecha e izquierda)
+var rom_hip_r = 0													// Variable que almacena el dato de rom pierna derecha calculado a partir de acc
+var rom_hip_l = 0													// Variable que almacena el dato de rom pierna izquierda calculado a partir de acc			
+var rom_hip_r_cal = 0;												// Variable que almacena el dato de rom pierna derecha calculado a partir de acc en el momento de la calibración
+var rom_hip_l_cal = 0;												// Variable que almacena el dato de rom pierna izquierda calculado a partir de acc en el momento de la calibración
+
+////  VARIABLES GENERALES PARA LA CONEXIÓN CON LAS GAFAS DE VR   ////
+/////////////////////////////////////////////////////////////////////
+var tcpServer_VR = net.createServer();       						// socket creado para el envío de datos de rom y longitud de pierna a la app de VR
+var vr_port = 41235;												// Variable que almacena el puerto destinado al socket de envío de datos a las gafas de VR
+var is_client_connected = false;									// Variable que almacena el estado de conexión del socket de envío de datos a VR
+var vr_ready = false; 												// Variable que almacena si el comando #ready se ha recibido correctamente.
+
+//  VARIABLES GENERALES RELACIONADAS CON EL PARSEO DE DATOS RECIBIDOS 
 var is_first_data = [true, true, true, true];   //sw, imu1, imu2, imu3.  Esta variable se utiliza como input, en la función hex2a, para descartar el primer mensaje (por si no llega completo). 
- 
+
 
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////                                                               RECEPCIÓN DE DATOS DEL SW A TRAVÉS DEL SOCKET DE BLUETOOTH                                                           ///////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 // la función descrita a continuación se ejecuta automáticamente cada vez que se recibe un nuevo dato a través del socket de conexión con el SWalker
 
 var ascii_msg;
 var lasthex_sw = "";
-var msecondsFromLastMessage_swalker = 0;    // variable para controlar los milisegundos que han pasado desde la recepción del ultimo dato. Si la conexión bluetooth sigue activa o no, en caso de que no se reciba el mensaje de fallo de socket.
+var msecondsFromLastMessage_swalker = 0;    // variable para controlar los milisegundos que han pasado desde la recepción del ultimo dato. Objetivo: Control del estado del socket, en caso de que no se reciba el mensaje de fallo de socket.
 serial_swalker.on('data', function(data){ 
 	// Actualizamos los milisegundos desde la recepción del último mensaje
 	msecondsFromLastMessage_swalker = 0;
@@ -92,7 +135,7 @@ serial_swalker.on('data', function(data){
 				
 				if (record_therapy){
 					// Se almanenan los datos en una lista únicamente si el delsys no ha sido útilizado. En el caso contrario, el almacenamiento lo marca la recepción de datos del delsys (acelerometros).
-					// Esto se ha planteado así para no perder datos del delsys (frec delsys: 100Hz; frec sw: 10Hz)
+					// Esto se ha planteado así para no perder datos del delsys (frec delsys: 148Hz; frec sw: 10Hz)
 					if(! is_delsys_connected){
 						// swalker data
 						rom_left_vector.push(parseFloat(rom_left-rom_left_calibration));
@@ -131,106 +174,63 @@ serial_swalker.on('closed', function(){
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////                                                          RECEPCIÓN DE DATOS DEL  DELSYS TRIGNO WIRELESS EMG -  SOCKET TCP/IP                                                       ///////
+////                                                          RECEPCIÓN DE DATOS DE EMG DESDE EMGdataAcquisition.py -  SOCKET TCP/IP                                                    ///////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+// la función descrita a continuación se ejecuta automáticamente cada vez que se recibe un nuevo mensaje de datos a través del socket habilitado para la recepción de datos enviados desde el software EMGdataAcquisition.py (puerto 30002)
 
 var received_data = "";
-var msecondsFromLastMessage_delsys = 0
+var msecondsFromLastMessage_delsys = 0    // variable que almacena los milisegundos que han pasado desde la recepción del ultimo dato. Objetivo: Control del estado del socket, en el caso de que no se reciba correctamente el mensaje de fallo.
 client_delsys_data.on('data', function(data) {
     var datos = data.toString();
+    // Actualizamos los milisegundos desde la recepción del último mensaje
     msecondsFromLastMessage_delsys = 0
-    var msg_data = false;
     for (let index = 0; index < datos.length; index++) {
-        msg_data = true;
-		if(msg_data){
-            received_data = received_data + datos.charAt(index);
-            if (datos.charAt(index) == '}') {
-                emg_msg = received_data;
-                received_data = "";
-            }
+		received_data = received_data + datos.charAt(index);
+		// parseo del mensaje recibido para separar los JSON recibidos, por si hubiera más de uno. En ese caso, almacenamos únicamente un mensaje y prescindimos de los que hubiera a continuación.
+		if (datos.charAt(index) == '}') {
+			emg_msg = received_data;
+			received_data = "";
         }
     }
 });
 
-// ACCelerometer data dELSYS 
-const client_delsys_acc = new net.Socket();
-const delsys_acc_port = 50042;
-var tibiaR_accX_vector = [];
-var tibiaL_accX_vector = [];
-var tibiaR_accX = 0
-var tibiaL_accX = 0;
-var index_channel = 1;
 
-var acc_all_data = [];
-var s1_accX = 0;
-var s1_accY = 0;
-var s1_accZ = 0;
-var s2_accX = 0;
-var s2_accY = 0;
-var s2_accZ = 0;
-var s3_accX = 0;
-var s3_accY = 0;
-var s3_accZ = 0;
-var s4_accX = 0;
-var s4_accY = 0;
-var s4_accZ = 0;
-var s5_accX = 0;
-var s5_accY = 0;
-var s5_accZ = 0;
-var s6_accX = 0;
-var s6_accY = 0;
-var s6_accZ = 0;
-var s7_accX = 0;
-var s7_accY = 0;
-var s7_accZ = 0;
-var s8_accX = 0;
-var s8_accY = 0;
-var s8_accZ = 0;
-
-var acc_rom_hip_vector = []
-var rom_hip_r = 0
-var rom_hip_l = 0
-var rom_hip_r_cal = 0;
-var rom_hip_l_cal = 0;
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////                                                                 RECEPCIÓN DE DATOS DE ACC DESDE EL TCU -  SOCKET TCP/IP                                                            ///////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// la función descrita a continuación se ejecuta automáticamente cada vez que se recibe un nuevo mensaje de datos a través del socket habilitado para la recepción de datos enviados desde el TCU-Delsys (puerto 50042)
 
 client_delsys_acc.on('data', function(msg) {
     var len = Buffer.byteLength(msg)
-    index_channel = decodeFloat(msg, index_channel);
-    
+    index_channel = decodeFloat(msg, index_channel);    // El dato de acc se recibe en forma de 4 bytes. La función decodeFloat se encarga de la conversión bytes -> Float, y de mantener el orden de sensores
     if (record_therapy){
 		// Almacenamos los datos en una lista, que posteriormente será volcada en la base de datos.    //148 hz
 		time_stamp_vector.push(Date.now());
-		//emg_activity_vector.push(JSON.parse(emg_msg).emg);
-		//emg_binary_activation_vector.push(JSON.parse(emg_msg).binary_activation_values);
-
-		// acc
-		//tibiaR_accX_vector.push(tibiaR_accX)
-		//tibiaL_accX_vector.push(tibiaL_accX)
 		
-		// swalker data    (si ni está conectado, se almacenarán 0s)
+		// Almacenamiento de los datos del SW. Si no se encuentra conectado, se almacenarán 0s
 		rom_left_vector.push(parseFloat(rom_left-rom_left_calibration));
 		rom_right_vector.push(parseFloat(rom_right-rom_right_calibration));
 		load_vector.push(((parseFloat(load)/global_patient_weight)*100).toFixed(2));
 		direction_vector.push(direction_char);
 		
 		// acc
+		// acc_all_data es una variable que almacena lo datos que serán descargados en forma de csv una vez finalizada la sesión 
 		acc_all_data.push([s1_accX, s1_accY, s1_accZ, s2_accX, s2_accY, s2_accZ, s3_accX, s3_accY, s3_accZ, s4_accX, s4_accY, s4_accZ, s5_accX, s5_accY, s5_accZ, s6_accX, s6_accY, s6_accZ,s7_accX, s7_accY, s7_accZ, s8_accX, s8_accY, s8_accZ])
+		// acc_rom_hip_vector almacena los datos calculados de rom a partir del acelerómetro, que serán almacenados en la base de datos junto con los datos del sw.
 		acc_rom_hip_vector.push([rom_hip_r, rom_hip_l])		    
 	}
     
 });
 
-////////////////////////////////////////
-/////  VR OQULUS QUEST  ENVIRONMENTS ///
-////////////////////////////////////////
-var sockets = Object.create(null);
-var udpServer_VR = net.createServer();
-udpServer_VR.listen(41235);
-console.log("listening on server 41235 - VR");
-var is_client_connected = false;
-var vr_ready = false; 
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////                                                               RECEPCIÓN DE MENSAJES DEL SOCKET DE VR - TCP/IP                                                                      ///////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+tcpServer_VR.listen(vr_port);      // asignación del puerto de VR al socket TCP/IP crreado para la comunicación.
+console.log("listening on server 41235 - VR");    // traza queindica que el socket se encuentra abierto
+
+// Lectura del archivo .json de configuración de sesión para extraer el dato de la longitud de pierna del paciente
 fs.readFile(therapyConfigPath, (err, data) => {
     if (err) throw err;
     var config = JSON.parse(data);
@@ -238,43 +238,35 @@ fs.readFile(therapyConfigPath, (err, data) => {
     patient_leg_length = config.leg_length;
 });
 
+// la función descrita a continuación se ejecuta automáticamente cada vez que se detecta una nueva conexión en el socket de VR (purto 41235)
+tcpServer_VR.on('connection', function(socket){
 
-udpServer_VR.on('connection', function(socket){
-	socket.nickname = "conVR";
-	var clientname = socket.nickname;
-	sockets[clientname] = socket;
-	
-	 socket.emit('monitoring:connection_status',{
+	// Websocket: Envío del mensaje de estado de la conexión a therapy_monitoring para que actualice los atributos del botón de VR. (este botón está deshabilitado, pero sin embargo, al detectar apertura o cierre de conexión, cambia de color como indicativo)
+	sockets['websocket'].emit('monitoring:connection_status',{
 		device: "vr",
-		status:0});
+		status:0
+	});
                
-	//nos aseguramos que se calibra al conectar la gafa
+	//nos aseguramos que se calibra el ROM al conectar la gafa
 	is_calibrated = false;
-	configureStartPos()
+	configureStartPos()    // Llamada a la función de calibración del ROM
 
 	console.log('There is a new connection !!');
-	is_client_connected = true;
+	// Actualización del estado de conexión 
+	is_client_connected = true; 
+	 
+	// la función descrita a continuación se ejecuta automáticamente cada vez que se recibe un nuevo mensaje a través del socket conectado creado para la VR (puerto 41235) 
 	socket.on('data',function(data){
-	//	console.log(data.toString());
-		if (data.toString() == "#ready"){
-			
-		
-			var timer = setInterval(function () {
-                                
-				if(is_client_connected){
-					if( is_calibrated){
-			                
-						//is_swalker_connected = true;
-                      //is_swalker_connected = true;
-						//rom_right = 0
-						//rom_left = 0
-						if(is_swalker_connected){
-							//var json_msg = {rom: [(rom_right-parseFloat(rom_right_calibration)), (rom_left-parseFloat(rom_left_calibration))], leg: parseInt(patient_leg_length)}
+	// Esperamos el mensaje #ready, por parte de la app de VR, para iniciar el envío de los datos
+	if (data.toString() == "#ready"){
+		// Creación de un timer que ejecuta el envío a la frecuencia de VR.
+		var timer = setInterval(function () {
+			if(is_client_connected){
+				// El envio no comienza hasta que no se ha realizado la calibración
+				if( is_calibrated){      
+					if(is_swalker_connected){
 						        var msg = ((rom_right-parseFloat(rom_right_calibration)).toFixed(2)).toString() + "|" + ((rom_left-parseFloat(rom_left_calibration)).toFixed(2)).toString() + "|" + patient_leg_length.toString() + "|" 
- 							
-// console.log(json_msg)
-                                                        socket.write(msg)
-							//socket.write(JSON.stringify(json_msg))
+                                socket.write(msg)
 						}
 					}
 				} else{
@@ -283,30 +275,36 @@ udpServer_VR.on('connection', function(socket){
 			}, VRSAMPLINGRATE);
 	   }
 	});
+	// la función descrita a continuación se ejecuta automáticamente si se produce un error dentro del socket. Si eso sucede, se envía un mensaje por websocket a therapy_monitoring ppara que actualice el botón de VR
 	socket.on('error', function(ex) {
 		console.log(ex);
 		is_client_connected = false;
-		 socket.emit('monitoring:connection_status',{
+		sockets['websocket'].emit('monitoring:connection_status',{
                device: "vr",
                status:1});
 	});
+	// la función descrita a continuación se ejecuta automáticamente si el otro lado finaliza la conexión. Si eso sucede, se envía un mensaje por websocket a therapy_monitoring ppara que actualice el botón de VR
 	socket.on('end', function() {
 		console.log('VR data ended');
 		is_client_connected = false
-		 socket.emit('monitoring:connection_status',{
+		sockets['websocket'].emit('monitoring:connection_status',{
                device: "vr",
                status:1});
 	});
+	// la función descrita a continuación se ejecuta automáticamente si el otro lado finaliza la conexión. Si eso sucede, se envía un mensaje por websocket a therapy_monitoring ppara que actualice el botón de VR
 	socket.on('close', function() {
 		console.log('VR data closed');
 		is_client_connected = false;
-		 socket.emit('monitoring:connection_status',{
+		sockets['websocket'].emit('monitoring:connection_status',{
                device: "vr",
                status:1});
 	});
 });
 
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////                                                                                      WEBSERVER                                                                                     ///////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
 /////////////////////////////////
@@ -353,7 +351,7 @@ var data_session_id;
 //*** Server-Client communication ***//
 ///////////////////////////////////////
 //
-//Connect with DataBase CPW_DB
+// Conexión con la base de datos swdb
 var con = mysql.createConnection({
     host: "localhost",
     user: "root",
@@ -362,7 +360,7 @@ var con = mysql.createConnection({
     multipleStatements: true
 });
 
-// Websockets
+// conexión io - websockets.   Servidor web (index.jx) - Cliente web (therapy_monitoring.js/users.js/therapy_settings.js)
 io.on('connection', (socket) => {
     console.log('new connection', socket.id);
     sockets['websocket'] = socket;
@@ -1172,7 +1170,7 @@ io.on('connection', (socket) => {
     });
 
     socket.on('monitoring:disable_vr', function(callbackFn) {
-        //udpServer_VR_.close();
+        //tcpServer_VR_.close();
         vr_ready = false;
         socket.emit('monitoring:connection_status', {
             device: "vr",
