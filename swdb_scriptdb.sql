@@ -89,7 +89,6 @@ CREATE TABLE IF NOT EXISTS `swdb`.`tabla_sesion` (
   `idPaciente` INT NULL DEFAULT NULL,
   `idTerapeuta` INT NULL DEFAULT NULL,
   `NumberSession` INT NULL DEFAULT NULL,
-  `idTerapeusta` INT NULL DEFAULT NULL,
   `gait_velocity` VARCHAR(45) NULL DEFAULT NULL,
   `observations` VARCHAR(500) NULL DEFAULT NULL,
 
