@@ -366,8 +366,9 @@ io.on('connection', (socket) => {
     sockets['websocket'] = socket;
     
     var datitos=[];
-
-    // ***** SW DATABASE INTERACTIONS
+    
+    // Mensaje enviado desde users.js al iniciar la conexión. Su función es trasladarle al mismo la informción guardada en la bse de datos.
+    // Este mensaje desencadena el envío, a modo de respuesta, de 4 mensajes dirigidos a users.js.
     socket.on('refreshlist',function() {
         console.log("Connected!");
         console.log("Connected Sessions!");
@@ -397,7 +398,7 @@ io.on('connection', (socket) => {
         
     })
 
-    //DELETE PATIENT DATABASE
+    //DELETE PATIENT DATABASE (users.js)
     socket.on('deleted_patient', function(iddeleted) {
         var sql = "DELETE FROM tabla_pacientes WHERE idtabla_pacientes="+iddeleted;
         con.query(sql, function (err, result) {
@@ -405,7 +406,7 @@ io.on('connection', (socket) => {
         });
     });
 
-    //EDIT PATIENT DATABASE
+    //EDIT PATIENT DATABASE (users.js)
     socket.on('edit_patient', function(editpat) {
 		console.log(editpat)
         var sql = 'UPDATE tabla_pacientes SET NombrePaciente = ?, ApellidoPaciente = ?, patiente_age = ?, patiente_weight = ?, leg_length = ?, estado_fisico = ?, estado_cognitivo = ?, surgery = ?, hip_joint = ?, patient_height = ?, patient_active_rom = ?, patient_gender = ?  WHERE (idtabla_pacientes=?)'
@@ -413,7 +414,7 @@ io.on('connection', (socket) => {
             console.log("Edited Patient");
         });
     });
-    // ADD PATIENT IN DATABASE
+    // ADD PATIENT IN DATABASE (users.js)
     socket.on('insertPatient', function(patient) {
         var sql = "INSERT INTO tabla_pacientes (NombrePaciente, ApellidoPaciente, patiente_age, patiente_weight, leg_length, estado_fisico, estado_cognitivo, surgery, hip_joint, patient_height, patient_active_rom, patient_gender) VALUES (?)";
         con.query(sql,[patient], function (err, result) {
@@ -422,7 +423,7 @@ io.on('connection', (socket) => {
         });
     });
 
-    //DOWNLOAD PATIENT LIST (DATABASE)
+    //DOWNLOAD PATIENT LIST (DATABASE)    (users.js)
     socket.on('download_patients',function(res){
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet('My Sheet');
@@ -452,7 +453,7 @@ io.on('connection', (socket) => {
         });
     })
 
-    // ADD THERAPIST IN DATABASE
+    // ADD THERAPIST IN DATABASE (users.js)
     socket.on('insertTherapist', function(therapist) {
         var sql = "INSERT INTO tabla_terapeutas (NombreTerapeuta, ApellidoTerapeuta, Centro) VALUES (?)";
         con.query(sql,[therapist], function (err, result) {
@@ -461,7 +462,7 @@ io.on('connection', (socket) => {
         });
     });
 
-    //EDIT THERAPIST DATABASE
+    //EDIT THERAPIST DATABASE (users.js)
     socket.on('edit_therapist', function(editpat) {
         var sql = 'UPDATE tabla_terapeutas SET NombreTerapeuta = ?, ApellidoTerapeuta = ?, Centro = ?  WHERE (idtabla_terapeutas=?)'
         con.query(sql,[editpat.NombreTerapeuta,editpat.ApellidoTerapeuta, editpat.Centro,editpat.idtabla_terapeutas], function (err, result) {
@@ -469,7 +470,7 @@ io.on('connection', (socket) => {
         });
     });
 
-    //DELET THERAPIST DATABASE
+    //DELET THERAPIST DATABASE (users.js)
     socket.on('deleted_therapist', function(iddeleted) {
         var sql = "DELETE FROM tabla_terapeutas WHERE idtabla_terapeutas="+iddeleted;
         con.query(sql, function (err, result) {
@@ -477,7 +478,7 @@ io.on('connection', (socket) => {
         });
     });
 
-    //DOWNLOAD PATIENT LIST (DATABASE)
+    //DOWNLOAD PATIENT LIST (DATABASE) (users.js)
     socket.on('download_therapist',function(res){
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet('Therapists');
@@ -496,7 +497,7 @@ io.on('connection', (socket) => {
         });
     })
 
-    // ADD SESSIONS DATA IN DATABASE
+    // ADD SESSIONS DATA IN DATABASE  (therapy_monitoring.js)
     socket.on('addsesiondata', function(data) {
 		/*
         rom_left_vector = test_rom_left_vector
@@ -626,39 +627,34 @@ io.on('connection', (socket) => {
         worksheetz.addRow(["RF D Z", "BF D Z" ,"TA D Z", "GM D Z", "RF I Z", "BF I Z", "TA I Z", "GM I Z"])
 		
         for (var i = 0; i < acc_all_data.length; i++) {
-			worksheetx.addRow([acc_all_data[i][0], acc_all_data[i][3] , acc_all_data[i][6], acc_all_data[i][9], acc_all_data[i][12], acc_all_data[i][15], acc_all_data[i][18], acc_all_data[i][21]]).commit()
-			worksheety.addRow([acc_all_data[i][1], acc_all_data[i][4] ,acc_all_data[i][7], acc_all_data[i][10], acc_all_data[i][13], acc_all_data[i][16], acc_all_data[i][19], acc_all_data[i][22]]).commit()
-			worksheetz.addRow([acc_all_data[i][2], acc_all_data[i][5] ,acc_all_data[i][8], acc_all_data[i][11], acc_all_data[i][14], acc_all_data[i][17], acc_all_data[i][20], acc_all_data[i][23]]).commit()
-			
-			
-		}	
-		workbook.xlsx.writeFile('all_acc_datax.xlsx');
-		n = 1;
-		const limitedInterval = setInterval(() => {
-			if (n == 4){
-				socket.emit("monitoring:downloadAccExcellx");
-				console.log("sent")
-			
-			}
-			if(n == 5){
+	    worksheetx.addRow([acc_all_data[i][0], acc_all_data[i][3] , acc_all_data[i][6], acc_all_data[i][9], acc_all_data[i][12], acc_all_data[i][15], acc_all_data[i][18], acc_all_data[i][21]]).commit()
+	    worksheety.addRow([acc_all_data[i][1], acc_all_data[i][4] ,acc_all_data[i][7], acc_all_data[i][10], acc_all_data[i][13], acc_all_data[i][16], acc_all_data[i][19], acc_all_data[i][22]]).commit()
+	    worksheetz.addRow([acc_all_data[i][2], acc_all_data[i][5] ,acc_all_data[i][8], acc_all_data[i][11], acc_all_data[i][14], acc_all_data[i][17], acc_all_data[i][20], acc_all_data[i][23]]).commit()
+		
+		
+	}	
+	workbook.xlsx.writeFile('all_acc_datax.xlsx');
+	
+	// Para asegurar que se ha almacenado el excel correcamente, la descarga comenzará en 5 segundos.
+	n = 1;
+	const limitedInterval = setInterval(() => {
+	    if (n == 4){
+		    socket.emit("monitoring:downloadAccExcellx");
+		    console.log("sent")
+	    
+	    }
+	    if(n == 5){
 
-				clearInterval(limitedInterval);	
-			}	 
-			n++
-			
-		}, 1000)
+		    clearInterval(limitedInterval);	
+	    }	 
+	    n++
+		
+	}, 1000)
 	}
 	
-	//workbooky.xlsx.writeFile('all_acc_datay.xlsx');
-	//workbookz.xlsx.writeFile('all_acc_dataz.xlsx');
-	
-	
-	//socket.emit("monitoring:downloadAccExcelly");
-	//socket.emit("monitoring:downloadAccExcellz");
-	//console.log("send")
     });
 
-    //DELETE SESSION FROM DATABASE
+    //DELETE SESSION FROM DATABASE (users.js)
     socket.on('deleted_session', function(iddeleted) {
         var sql_sessions = "DELETE FROM tabla_sesion WHERE idtable_session="+iddeleted;
         var sql_data = "DELETE FROM data_sessions WHERE idSesion="+iddeleted;
@@ -670,7 +666,7 @@ io.on('connection', (socket) => {
         });
     });
 
-    //DOWNLOAD SESSIONS CONFIGURATION (DATABASE)
+    //DOWNLOAD SESSIONS CONFIGURATION (DATABASE) (users.js)
     socket.on('download_sessions_config',function(res){
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet('Session');
@@ -693,7 +689,7 @@ io.on('connection', (socket) => {
         });
     })
 
-    //DOWNLOAD SESSION DATA (DATABASE)
+    //DOWNLOAD SESSION DATA (DATABASE) (users.js)
     socket.on('download_sessions_data',function(idsesion){
         console.log("Download Data")
         idsesion = idsesion;
@@ -708,24 +704,6 @@ io.on('connection', (socket) => {
             { header: 'Right Hip Real', key: 'right_hip', width: 10 },
             { header: 'Weigth Gauge', key: 'weight_gauge', width: 20 },
             { header: 'Direction', key: 'direction', width: 20 },
-            /*
-            { header: 'Right RF muscle activity', key: 'emg_muscle_activity_s1', width: 20 },
-            { header: 'Right RF muscle activation (1/0)', key: 'muscle_binary_activation_s1', width: 30 },
-            { header: 'Right LH muscle activity', key: 'emg_muscle_activity_s2', width: 20 },
-            { header: 'Right LH muscle activation (1/0)', key: 'muscle_binary_activation_s2', width: 30 },
-            { header: 'Right TA muscle activity', key: 'emg_muscle_activity_s3', width: 20 },
-            { header: 'Right TA muscle activation (1/0)', key: 'muscle_binary_activation_s3', width: 30 },
-            { header: 'Right MG muscle activity', key: 'emg_muscle_activity_s4', width: 20 },
-            { header: 'Right MG muscle activation (1/0)', key: 'muscle_binary_activation_s4', width: 30 },
-            { header: 'Left RF muscle activity', key: 'emg_muscle_activity_s5', width: 20 },
-            { header: 'Left RF muscle activation (1/0)', key: 'muscle_binary_activation_s5', width: 30 },
-            { header: 'Left LH muscle activity', key: 'emg_muscle_activity_s6', width: 20 },
-            { header: 'Left LH muscle activation (1/0)', key: 'muscle_binary_activation_s6', width: 30 },
-            { header: 'Left TA muscle activity', key: 'emg_muscle_activity_s7', width: 20 },
-            { header: 'Left TA muscle activation (1/0)', key: 'muscle_binary_activation_s7', width: 30 },
-            { header: 'Left MG muscle activity', key: 'emg_muscle_activity_s8', width: 20 },
-            { header: 'Left MG muscle activation (1/0)', key: 'muscle_binary_activation_s8', width: 30 },
-            * */
             { header: 'Left hip ROM (acc)', key: 'accX_s7', width: 30 },
             { header: 'Right hip ROM (acc)', key: 'accX_s3', width: 30 },
            
@@ -744,7 +722,7 @@ io.on('connection', (socket) => {
         });
     })
     
-    //DOWNLOAD SESSION DATA (DATABASE)
+    //DOWNLOAD SESSION DATA (DATABASE)    (users.js)
     socket.on('download_all_sessions_data',function(){
         console.log("Download all sessions Data")
         const workbook = new ExcelJS.Workbook();
@@ -772,12 +750,12 @@ io.on('connection', (socket) => {
         });
     })
 
-    //DOWNLOAD SESSION DATA (DATABASE)
+    //LOAD SW SESSION DATA (ROM & GALGA). WEBSOCKET SOLICITANDO INFORMACIÓN PARA EL RESUMEN DE LA SESIÓN.   (USERS.JS)
     socket.on('load_session_data',function( idsesion){
 
-		let load_session_rom_left = [];
-		let load_session_rom_left_objects = [];
-        // store the ROM values for the summary
+	// store the ROM LEFT values for the summary
+	let load_session_rom_left = [];
+	let load_session_rom_left_objects = [];
         var sql = "SELECT left_hip FROM data_sessions WHERE idSesion=" + idsesion.toString() + ";";
         con.query(sql, function (err, rom_left_data) {
             if (err) throw err;
@@ -787,9 +765,10 @@ io.on('connection', (socket) => {
             }
             
         });
-		let load_session_rom_right = [];   
-		let load_session_rom_right_objects = [];
-        // store the ROM values for the summary
+	
+	// store the ROM RIGHT values for the summary
+	let load_session_rom_right = [];   
+	let load_session_rom_right_objects = [];
         var sql = "SELECT right_hip FROM data_sessions WHERE idSesion=" + idsesion.toString() + ";";
         con.query(sql, function (err, rom_right_data) {
             if (err) throw err;
@@ -798,9 +777,10 @@ io.on('connection', (socket) => {
                 load_session_rom_right.push(load_session_rom_right_objects[i].right_hip)
             }            
         });
+	
+	// store the weight supported values for the summary
         let load_session_weight_gauge = [];
-		let load_session_weight_gauge_objects = [];
-        // store the weight supported values for the summary
+	let load_session_weight_gauge_objects = [];
         var sql = "SELECT weight_gauge FROM data_sessions WHERE idSesion=" + idsesion.toString() + ";";
         con.query(sql, function (err, rom_right_data) {
             if (err) throw err;
@@ -821,6 +801,7 @@ io.on('connection', (socket) => {
         load_session_weight_gauge = []
     })
 
+    // Alojamiento de los archivos Excel creados durante el uso de la interfaz en una url. Estos archivos se mantienen actualizados gracias a un setInterval que realiza el alojamiento cada segundo.
     app.get('/downloadsessionsconfig', (req, res) => setTimeout(function(){ res.download('./Sessions_Configurations_data.xlsx'); }, 1000))
     app.get('/downloadsessionsdata', (req, res) => setTimeout(function(){ res.download('./Session_' + data_session_id + '.xlsx'); }, 1000))
     app.get('/downloadallsessionsdata', (req, res) => setTimeout(function(){ res.download('./All_DataSessions.xlsx'); }, 1000))
@@ -831,7 +812,7 @@ io.on('connection', (socket) => {
     app.get('/downloadaccdata2', (req, res) => setTimeout(function(){ res.download('./all_acc_datay.xlsx'); }, 1000))
     app.get('/downloadaccdata3', (req, res) => setTimeout(function(){ res.download('./all_acc_dataz.xlsx'); }, 1000))
 
-    //GET PATIENT INFO AND AUTOFILL IN "Therapy Settings" (DATABASE)
+    //GET PATIENT INFO AND AUTOFILL IN "Therapy Settings" (DATABASE)    (therapy_settings.js)
     socket.on('get_patient_info',function(data){
         // Get patient ID from database
         var name = data.patient_name.split(" ")[0];
@@ -872,35 +853,36 @@ io.on('connection', (socket) => {
         });
     })
     
-    // Move the SWalker
+    // SOLICITUD DEL MOVIMIENTO DEL SWALKER. ENVÍO DE COMANDOS AL ANDADOR (BT)  (therapy_monitoring.js)
     socket.on('traction:message', (data) => {
-		//Get command value
-		direction_char  = data.direction_char;
-		if (therapy_speed == "high"){
-			therapy_speed = 'f';
-		} else if (therapy_speed == 'slow'){
-			therapy_speed = 's';
-		} else{
-			therapy_speed = 'n';
-		}
+	// data = {direction_char: .. }
+	//Get command value
+	direction_char  = data.direction_char;
+	if (therapy_speed == "high"){
+		therapy_speed = 'f';
+	} else if (therapy_speed == 'slow'){
+		therapy_speed = 's';
+	} else{
+		therapy_speed = 'n';
+	}
 
-		var cmd = ''
-		//Command var to send
-		if (direction_char == 'b' | direction_char == 'f'){
-			cmd = '#'+ direction_char + therapy_speed;
-		} else {
-			cmd = '#'+ direction_char;
-		}
+	var cmd = ''  //Command var to send
+	
+	if (direction_char == 'b' | direction_char == 'f'){
+		cmd = '#'+ direction_char + therapy_speed;
+	} else {
+		cmd = '#'+ direction_char;
+	}
 
-		//send command cmd to swalker
-		console.log(cmd)
-		var buf = Buffer.from(cmd, 'utf8');
-		serial_swalker.write(buf)
-		.then(() => console.log('Data successfully written'))
-		.catch((err) => console.log('Error while sending command to SWALKERII', err))
+	//send command cmd to swalker
+	console.log(cmd)
+	var buf = Buffer.from(cmd, 'utf8');
+	serial_swalker.write(buf)
+	    .then(() => console.log('Data successfully written'))
+	    .catch((err) => console.log('Error while sending command to SWALKERII', err))
     })
 
-    // Send data to the charts in therapy monitoring
+    // MENSAJE PRINCIPAL DE ENVIO DE DATOS A THERAPY_MONITORING PARA SU REPRESENTACION EN TIEMPO REAL. (THERAPY_MONITORING.JS)
     setInterval(function () {
         socket.emit('monitoring:jointData', {
             // SWALKER
@@ -914,29 +896,29 @@ io.on('connection', (socket) => {
         })
         
         if(is_swalker_connected){
-			msecondsFromLastMessage_swalker += PLOTSAMPLINGTIME;
-			if (msecondsFromLastMessage_swalker > 15000){
-				disconnect_bt_device(socket, serial_swalker, is_swalker_connected, "sw");
-				msecondsFromLastMessage_swalker = 0;
-			}
+		msecondsFromLastMessage_swalker += PLOTSAMPLINGTIME;
+		if (msecondsFromLastMessage_swalker > 15000){
+			disconnect_bt_device(socket, serial_swalker, is_swalker_connected, "sw");
+			msecondsFromLastMessage_swalker = 0;
 		}
+	}
 		
-		 if(is_delsys_connected){
-			msecondsFromLastMessage_delsys += PLOTSAMPLINGTIME;
-			if (msecondsFromLastMessage_delsys > 20000){
-				msecondsFromLastMessage_delsys = 0;
-				 socket.emit('monitoring:connection_status', {
-                    device: "emg",
-                    // status--> 0: connect, 1: disconnect, 2: not paired, 3: conn error, 4: conn closed
-                    status: 3
-                }) 
-                is_delsys_connected = false;
-			}
+	 if(is_delsys_connected){
+		msecondsFromLastMessage_delsys += PLOTSAMPLINGTIME;
+		if (msecondsFromLastMessage_delsys > 20000){
+		    msecondsFromLastMessage_delsys = 0;
+		     socket.emit('monitoring:connection_status', {
+			device: "emg",
+			// status--> 0: connect, 1: disconnect, 2: not paired, 3: conn error, 4: conn closed
+			status: 3
+		    }) 
+		    is_delsys_connected = false;
 		}
+	}
 
     }, PLOTSAMPLINGTIME);
 
-    // Save therapy settings in a JSON file.
+    // Save therapy settings in a JSON file. (THERAPY_SETTINGS.JS)
     socket.on('settings:save_settings', (data) => {
 		console.log("save_Settings");
         fs.writeFileSync(therapyConfigPath, JSON.stringify(data), function (err){
@@ -945,7 +927,8 @@ io.on('connection', (socket) => {
         })
     })
     
-    // Update json therapy settings in session observations.
+    // Update json therapy settings in session observations.(THERAPY_MONITORING.JS)
+    // SE AÑADE LA VARIABLE OBSERVACIONES, ADQUIRIDA EN THERAOY_MONITORING, A LOS DATOS ALMACENADOS EN json EN THERAPYSETTINGS.
     socket.on('monitoring:save_settings', (obs) => {
 		console.log("update save_settings");
         var therapyConfigPath = path.join(__dirname, 'config','therapySettings.json');
@@ -986,7 +969,8 @@ io.on('connection', (socket) => {
             })
         });
     });
-
+    
+    /*
     socket.on('deleted_patient', function(iddeleted) {
 		console.log("deleted  patient 2");
         console.log(iddeleted);
@@ -1003,22 +987,23 @@ io.on('connection', (socket) => {
 
             });
     });
+*/
 
-    // Configure the robot.
+    // SOLICITUD DE CALIBRACIÓN (THERAPY_MONITORING.JS).
     socket.on('monitoring:configure_robot', function(callbackFn) {
         console.log("monitoring:configure_robot");
         configureStartPos();
     });
 
-    // Connect SWalker
+    // sOLICITUD DE CONEXIÓN BLUETOOTH CON EL ANDADOR ( THERAPY_MONITORING.JS)
     socket.on('monitoring:connect_swalker', function(callbackFn) {
 	console.log(is_swalker_connected);
         connect_bt_device(socket, serial_swalker, is_swalker_connected, "sw");
 
     });
-    // Disconnect SWalker
+    // SOLICITUD DE DESCONEXIÓN DEL SWALKER (THERAPY_MONITORING.JS)
     socket.on('monitoring:disconnect_swalker', function(callbackFn) {
-        // Reset all vectors
+        // Reset all vectors VARIABLES
         load_vector = []
         rom_right_vector = []
         rom_left_vector = []
@@ -1034,16 +1019,18 @@ io.on('connection', (socket) => {
     });
     
    
-    // Connect EMG
+    // SOLICITUD DE CONEXIÓN DEL SOFTWARE EMGdataAcquisition.py  (THRAPY_MONITORING.JS)
     socket.on('monitoring:connect_emg', function(callbackFn) {
+	// CLIENT_DELSYS_START: SOCKET DE COMANDOS
+	// CLIENT_DELSYS_DATA: SOCKET DE DATOS DE EMG
 	console.log(is_delsys_connected)
 	    if (!is_delsys_connected) {
 			
-		// start port
+		// CONNECT start port
 	        client_delsys_start.connect(DELSYS_START_PORT, DELSYS_PC_IP, function() {
 	            console.log('Connected to start');
 	        });  
-            // 0: connected (no error), 1: connection error, 2: connection close
+	    // mENSAJE AUTOMATICO DESENCADENADO POR UN ERROR EN EL SOCKET
             client_delsys_start.on('error', function(ex) {
                 console.log(ex);
                 socket.emit('monitoring:connection_status', {
@@ -1052,6 +1039,7 @@ io.on('connection', (socket) => {
                     status: 3
                 }) 
             });  
+	    // MENSAJE AUTOMATICO DESENCADENADO POR EL FIN DEL SOCKET
             client_delsys_start.on('end', function() {
                 console.log('Delsys start ended');
 		socket.emit('monitoring:connection_status', {
@@ -1060,6 +1048,7 @@ io.on('connection', (socket) => {
                     status: 1
                 }) 
             });
+	    // mENSAJE AUTOMATICO DESENCADENADO POR EL CIERRE DESDE EL OTRO EXTREMO DEL SOCKET
             client_delsys_start.on('close', function() {
                 console.log('Delsys start closed');
                 socket.emit('monitoring:connection_status', {
@@ -1069,11 +1058,11 @@ io.on('connection', (socket) => {
                 }) 
             });   
 	            
-	        // EMG data port
+	        // CONNECT EMG data port
 	        client_delsys_data.connect(DELSYS_DATA_PORT, DELSYS_PC_IP, function() {
                 console.log('Connected to data');
+		// ENVÍO DEL COMANDO QUE INICIA EL STREAING DE LOS DATOS
                 client_delsys_start.write('#startStream');
-
                 is_delsys_connected = true;
 
                 socket.emit('monitoring:connection_status', {
@@ -1083,6 +1072,7 @@ io.on('connection', (socket) => {
                 }) 
 
             }); 
+	    // mENSAJE AUTOMATICO DESENCADENADO POR UN ERROR EN EL SOCKET
             client_delsys_data.on('error', function(ex) {
                 console.log(ex);
                 connect_delsys = false;
@@ -1092,6 +1082,7 @@ io.on('connection', (socket) => {
                     status: 3
                 }) 
             });
+	    // MENSAJE AUTOMATICO DESENCADENADO POR EL FIN DEL SOCKET
             client_delsys_data.on('end', function() {
                 console.log('Delsys data ended');
 		socket.emit('monitoring:connection_status', {
@@ -1100,6 +1091,7 @@ io.on('connection', (socket) => {
                     status: 2
                 }) 
             });
+	    // mENSAJE AUTOMATICO DESENCADENADO POR EL CIERRE DESDE EL OTRO EXTREMO DEL SOCKET
             client_delsys_data.on('close', function() {
                 console.log('Delsys data closed');
 		socket.emit('monitoring:connection_status', {
@@ -1109,24 +1101,27 @@ io.on('connection', (socket) => {
                 }) 
             });
             
-            // AUX Acc data port
+            // CONNECT AUX Acc data port (COEXIÓN A SOCKET ABIERTO EN TCU)
             client_delsys_acc.connect(delsys_acc_port, DELSYS_PC_IP, function() {
                 console.log('Connected to acc');
 
             }); 
+	    // mENSAJE AUTOMATICO DESENCADENADO POR UN ERROR EN EL SOCKET
             client_delsys_acc.on('error', function(ex) {
                 console.log(ex);
                 connect_delsys = false;
             });
+	    // MENSAJE AUTOMATICO DESENCADENADO POR EL FIN DEL SOCKET
             client_delsys_acc.on('end', function() {
                 console.log('Delsys acc ended');
             });
+	    // mENSAJE AUTOMATICO DESENCADENADO POR EL CIERRE DESDE EL OTRO EXTREMO DEL SOCKET
             client_delsys_acc.on('close', function() {
                 console.log('Delsys acc closed');
             });
 	    }
     });
-    // Disconnect EMG
+    // Disconnect EMG    (THERAPY_MONITORING.JS)
     socket.on('monitoring:disconnect_emg', function(callbackFn) {
     	if(is_delsys_connected) {
             console.log("----------------STOP_RECORD--------------------");
@@ -1143,7 +1138,7 @@ io.on('connection', (socket) => {
         }) 
     });
 
-    // Flag to emg acquisition program to save the raw data
+    // Flag to emg acquisition program to save the raw data    (THERAPY_MONITORING.JS)
     socket.on('monitoring:save_emg', function(callbackFn) {
     	if(is_delsys_connected) {
             console.log("----------------Save data--------------------");
@@ -1151,6 +1146,7 @@ io.on('connection', (socket) => {
         }
     });
 
+    // CONEXION DEL SOCKET DE VR  (THERAPY_MONITORING.JS)
     socket.on('monitoring:connect_vr', function(callbackFn) {
         // The UDP network is used to communicate with oculus quest.
         // The predicted stride length will be send through this socket to feed the VR environment.
@@ -1168,7 +1164,8 @@ io.on('connection', (socket) => {
              status:1})
             }
     });
-
+    
+    // DESCONEXION DEL SOCKET DE VR  (THERAPY_MONITORING.JS)
     socket.on('monitoring:disable_vr', function(callbackFn) {
         //tcpServer_VR_.close();
         vr_ready = false;
@@ -1179,7 +1176,7 @@ io.on('connection', (socket) => {
         }) 
     });
     
-    // Start therapy.
+    // iNDICA EL INICIO DE LA SESIÓN (THERAPY_MONITORING.JS) eNVIADO AL PULSAR EL BOTÓN START.-
     socket.on('monitoring:start', function(callbackFn) {
 
         // Reset all vectors
@@ -1191,19 +1188,9 @@ io.on('connection', (socket) => {
         load = 0;
         rom_right = 0;
         rom_left = 0;
-       // rom_right_calibration = 0;
-       // rom_left_calibration = 0;
-        // EMG
-        //emg_activity_vector = [];
-        //emg_binary_activation_vector = [];
-        // ACC
-        /*tibiaR_accX_vector = [];
-        tibiaR_accX = 0;
-        tibiaL_accX_vector = [];
-        tibiaL_accX = 0;*/
         acc_rom_hip_vector = [];
         rom_hip_l_cal = rom_hip_l;
-		rom_hip_r_cal = rom_hip_r;
+	rom_hip_r_cal = rom_hip_r;
 
         // Start recording
         record_therapy = true;
@@ -1214,7 +1201,7 @@ io.on('connection', (socket) => {
         }
     });
 
-    // Stop therapy.
+    // iNDICA EL fin DE LA SESIÓN (THERAPY_MONITORING.JS) eNVIADO AL PULSAR EL BOTÓN STOP.-    
     socket.on('monitoring:stop', function(callbackFn) {
 
     	if(is_delsys_connected) {
@@ -1240,9 +1227,9 @@ function configureStartPos() {
     rom_right_calibration = rom_right;
     
     if(is_delsys_connected){
-		rom_hip_l_cal = rom_hip_l;
-		rom_hip_r_cal = rom_hip_r;
-	}
+	rom_hip_l_cal = rom_hip_l;
+	rom_hip_r_cal = rom_hip_r;
+    }
 
 }
 
@@ -1255,6 +1242,8 @@ function stopTherapy() {
 
     rom_left_calibration = 0;
     rom_right_calibration = 0;
+    rom_hip_l_cal = 0;
+    rom_hip_r_cal = 0;
 }
 
 function stopSwalker(){
