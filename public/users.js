@@ -414,6 +414,14 @@ socket.on('datostabla', function(datas) {
     });
 })
 
+// Intento de solventar un bug que añade varias veces el mismo usuario a la base de datos
+var patient_added = false;
+var myTimer;
+myTimer = setInterval(function(){
+  patient_added = false;
+}, 2000);
+
+    
 var $pd
 var pd;
 socket.on('patientdata',function(datapatient){
@@ -491,10 +499,10 @@ socket.on('patientdata',function(datapatient){
 	  }
 	 
   });
-
-
+    
     //ADD PATIENT
     $('#b_add_p').on('click', function() {
+  
       let patfname = document.getElementById("FNPatient").value;
       let patlname = document.getElementById("LNPatient").value;
       let patage= document.getElementById("AgePatient").value;
@@ -507,12 +515,19 @@ socket.on('patientdata',function(datapatient){
       let patheight = document.getElementById("HeightPatient").value;
       let patmaxActiveRom = document.getElementById("activeRom").value;
       let patgender = document.getElementById("gender").value;
-      socket.emit('insertPatient',[patfname, patlname, patage, patweight, patleglength, patestadofisico, patestadocognitivo, patsurgery, pathipjoint, patheight, patmaxActiveRom, patgender]);
-      //location.reload(true);
-      console.log("hola add patient");
       
-      // refresh database to rewrite datatables
-      socket.emit('refreshlist');
+      if (!patient_added){
+	socket.emit('insertPatient',[patfname, patlname, patage, patweight, patleglength, patestadofisico, patestadocognitivo, patsurgery, pathipjoint, patheight, patmaxActiveRom, patgender]);
+	//location.reload(true);
+	console.log("hola add patient");
+	
+	// refresh database to rewrite datatables
+	socket.emit('refreshlist');
+	patient_added = true
+      } 
+	
+      
+      $('modaladdpatient').modal('hide');
       
     });
 
@@ -530,6 +545,7 @@ socket.on('patientdata',function(datapatient){
         };
         dt.row(indexrow).remove().draw();
         socket.emit('deleted_patient',checkeds[0].idtabla_pacientes);
+	$('modaldeletedpatient').modal('hide');
     });
 
     $('#b_download_p').on('click', function() {
@@ -569,7 +585,7 @@ socket.on('patientdata',function(datapatient){
       let dt = $('#patientsList').DataTable();
       let vars = dt.data().toArray();
       let checkeds = dt.data().toArray().filter((data) => data.checked);
-		console.log(checkeds[0])
+      console.log(checkeds[0])
       for (i = 0; i < vars.length; i++) {
           if (checkeds[0].idtabla_pacientes == vars[i].idtabla_pacientes){
             console.log(i);
