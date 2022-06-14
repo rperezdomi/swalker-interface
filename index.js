@@ -50,7 +50,7 @@ var direction_vector = [];  										// lista que almacena todos los datos de d
 
 const client_delsys_start = new net.Socket();        				// socket abierto para el envío de comandos al software EMGdataAcquisition.py
 const client_delsys_data = new net.Socket();         				// socket abierto para la recepción de datos de EMG desde el software EMGdataAcquisition.py
-const DELSYS_PC_IP = '192.168.43.10';               				// Variable que almacena la IP del ordenador desde el cual se lanzan el TCU (delsys) y el software EMGdataAcquisition.py
+const DELSYS_PC_IP = '192.168.43.9';               				// Variable que almacena la IP del ordenador desde el cual se lanzan el TCU (delsys) y el software EMGdataAcquisition.py
 const DELSYS_START_PORT = 30000;                     				// Variable que almacena el puerto destinado al socket de envío de comandos a EMGdataAcquisition.py
 const DELSYS_DATA_PORT = 30002;                      				// Variable que almacena el puerto destinado al socket de recepción de datos de EMG desde EMGdataAcquisition.py
 var is_delsys_connected = false;                     				// Variable que almacena el estado de conexión del software EMGdataAcquisition.py
@@ -1084,6 +1084,7 @@ io.on('connection', (socket) => {
     socket.on('monitoring:connect_emg', function(callbackFn) {
 	// CLIENT_DELSYS_START: SOCKET DE COMANDOS
 	// CLIENT_DELSYS_DATA: SOCKET DE DATOS DE EMG
+        console.log("mensaje conexion emg")
 	console.log(is_delsys_connected)
 	    if (!is_delsys_connected) {
 			
@@ -1303,6 +1304,8 @@ io.on('connection', (socket) => {
 	    // Send command to start streaming
 	    characteristic_object.writeValue(Buffer.from("os"))
 	}
+        console.log("is connected")
+        console.log(is_delsys_connected)
 
         if(is_delsys_connected) {
             console.log("----------------RECORD--------------------");
