@@ -229,13 +229,13 @@ window.onload = function() {
 	var rendered = false;
 	var ctx_emg_envelope_data_objects;
 	
+	// Cuando se seleccione la pestaña ROM, vaciamos las graficas de EMG y ponemos el booleano rendered a false para que no se actualicen.
 	$('#ROM_tab').on('shown.bs.tab', function (event) {
 		rendered=false;
-		
 		emptyJointGraphs()
 	});
+	// Cuando se seleccione la pestaña EMG creamos las gráficas y las asignamos al canvas destinado a ello.
 	$('#EMG_tab2').on('shown.bs.tab', function (event) {
-		console.log("hwn");
 		
 		ctxrfleft = document.getElementById('rf_left_chart').getContext('2d');
 		ctxrfright = document.getElementById('rf_right_chart').getContext('2d');
@@ -258,7 +258,7 @@ window.onload = function() {
 			type: 'line',
 			data: {
 				datasets: [{
-					label: 'EMG',
+					label: 'EMG',s
 					data: 0,
 					fill: false,
 					borderColor: '#FF2626',
@@ -400,6 +400,7 @@ window.onload = function() {
 		}
 	}
 	
+	// Descarga del excel que contiene los datos de acelerómetro del delsys
 	socket.on("monitoring:downloadAccExcellx", (data) =>{
 		console.log("received")
 		j = 1
@@ -419,7 +420,24 @@ window.onload = function() {
 		
 	})
 	
-	
+	// Descarga del excel que contiene los dats de EMG del sensor de werium
+	socket.on("monitoring:downloadEMGWerium", (data) =>{
+		j = 1
+		const limitedInterval = setInterval(() => {
+			if (j ==2){
+				window.open('http://192.168.43.1:3000/downloadaEMGWerium');
+				
+					
+			} 	
+			if(j == 3){
+				console.log("lets clear")
+				clearInterval(limitedInterval);
+			}
+			j++
+			
+		    }, 1000)
+		
+	})
 
 	// Vars used for objects agrupation
 	var ctx_emg_real_data_objects =  [ctxrhipInstance.data.datasets[1], ctxrhipInstance.data.datasets[2], ctxlhipInstance.data.datasets[1], ctxlhipInstance.data.datasets[2]];
@@ -709,10 +727,29 @@ window.onload = function() {
 
 		} else if (document.getElementById("enable_emg").value == "connecting") {
 			document.getElementById("enable_emg").value = "off";
-			document.getElementById("enable_emg").innerHTML = "Conectar EMG";
+			document.getElementById("enable_emg").innerHTML = "Conectar BLE";
 			document.getElementById("enable_emg").style.background = "#808080";
 			socket.emit('monitoring:disconnect_emg');
 		}
+	}
+	
+	document.getElementById("connect_BLE").onclick = function() {
+		if(document.getElementById("connect_BLE").value == "off") {
+			document.getElementById("connect_BLE").value = "connecting";
+			document.getElementById("connect_BLE").innerHTML = "Conectando...";
+			socket.emit('monitoring:connect_ble');
+
+		// close BLE connection
+		} else if (document.getElementById("connect_BLE").value == "on") {
+			document.getElementById("connect_BLE").value = "off";
+			document.getElementById("connect_BLE").innerHTML = "Conectar BLE";
+			socket.emit('monitoring:disconnect_BLE');
+
+		} else if (document.getElementById("connect_BLE").value == "connecting") {
+			document.getElementById("connect_BLE").value = "off";
+			document.getElementById("connect_BLE").innerHTML = "Conectar BLE";
+			document.getElementById("connect_BLE").style.background = "#808080";
+		}	
 	}
 	/*
 	document.getElementById("enable_vr").onclick = function() {
@@ -1039,6 +1076,14 @@ window.onload = function() {
 		}
 	}	
 	
+	document.getElementById("juego1").onclick = function() {
+		socket.emit('mmonitoring:juego1')
+	};
+	
+	document.getElementById("juego2").onclick = function() {
+		socket.emit('mmonitoring:juego2')
+	};
+	
 	function showSwNotConnModal(){
 		$("#modalSwNotConn").modal('show');
 	};
@@ -1137,12 +1182,33 @@ socket.on('monitoring:connection_status', (data) => {
 			document.getElementById("enable_vr").value = "on";
 			document.getElementById("enable_vr").innerHTML = "VR Conectado";
 			document.getElementById("enable_vr").style.background = "#4eb14e";
+			// show game buttons
+			document.getElementById("juego1").style.display = "block";
+			document.getElementById("juego2").style.display = "block";
+			
 		} else {
 			console.log("error connection")
 			//change button color and text;
 			document.getElementById("enable_vr").value = "off";
 			document.getElementById("enable_vr").innerHTML = "VR Desconectado";
 			document.getElementById("enable_vr").style.background = "#eb0a0a";
+			// hide game buttons
+			document.getElementById("juego1").style.display = "none";
+			document.getElementById("juego2").style.display = "none";
+		}
+	} else if ( device == 'ble'){
+		if (status == 0){
+			console.log("is con")
+			//change button color and text;
+			document.getElementById("connect_ble").value = "on";
+			document.getElementById("connect_ble").innerHTML = "BLE Conectado";
+			document.getElementById("connect_ble").style.background = "#4eb14e";
+		} else {
+			console.log("error connection")
+			//change button color and text;
+			document.getElementById("connect_ble").value = "off";
+			document.getElementById("connect_ble").innerHTML = "BLE Desconectado";
+			document.getElementById("connect_ble").style.background = "#eb0a0a";
 		}
 	}
 });

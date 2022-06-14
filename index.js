@@ -6,7 +6,7 @@ const express = require('express'); 								// Modulo de nodejs para servir arch
 const fs = require('fs'); 											// Modulo de nodejs para manejo de archivos
 const net = require('net');											// Modulo de nodejs para manejo de sockets por protocolo TCP/IP
 const BluetoothClassicSerialportClient = require('bluetooth-classic-serialport-client');    // Modulo de nodejs para el manejo del puerto serie (bt)
-
+const {createBluetooth} = require('node-ble');						// Módulo de nodejs para el manejo de bluetooth LE
 
 // Variables generales de sesión 
 const therapyConfigPath = path.join(__dirname, 'config','therapySettings.json');  // Ruta del archivo que almacena la configuración de la sesión (Estos datos se reciben por websocket desde therapy_settings.js)
@@ -99,6 +99,20 @@ var tcpServer_VR = net.createServer();       						// socket creado para el env�
 var vr_port = 41235;												// Variable que almacena el puerto destinado al socket de envío de datos a las gafas de VR
 var is_client_connected = false;									// Variable que almacena el estado de conexión del socket de envío de datos a VR
 var vr_ready = false; 												// Variable que almacena si el comando #ready se ha recibido correctamente.
+
+////  VARIABLES GENERALES PARA LA CONEXIÓN BLE   ////
+/////////////////////////////////////////////////////////////////////
+const {bluetooth, destroy} = createBluetooth();
+var characteristic_object = null;
+var device_object = null;
+var is_ble_connected = false;
+var ble_macAddr = "XX:XX:XX:XX:XX"
+var ble_service = "49535343-fe7d-4ae58fa99fafd205e455"
+var ble_characteristic = "49535343-1e4d-4bd9-ba61-23c647249616"
+var emg1_vector = []
+var emg2_vector = []
+var emg1 = 0;
+var emg2 = 0;
 
 //  VARIABLES GENERALES RELACIONADAS CON EL PARSEO DE DATOS RECIBIDOS 
 var is_first_data = [true, true, true, true];   //sw, imu1, imu2, imu3.  Esta variable se utiliza como input, en la función hex2a, para descartar el primer mensaje (por si no llega completo). 
@@ -240,7 +254,9 @@ fs.readFile(therapyConfigPath, (err, data) => {
 
 // la función descrita a continuación se ejecuta automáticamente cada vez que se detecta una nueva conexión en el socket de VR (purto 41235)
 tcpServer_VR.on('connection', function(socket){
-
+	
+	sockets['VR_socket'] = socket;
+	
 	// Websocket: Envío del mensaje de estado de la conexión a therapy_monitoring para que actualice los atributos del botón de VR. (este botón está deshabilitado, pero sin embargo, al detectar apertura o cierre de conexión, cambia de color como indicativo)
 	sockets['websocket'].emit('monitoring:connection_status',{
 		device: "vr",
@@ -507,15 +523,16 @@ io.on('connection', (socket) => {
 		is_swalker_connected = true;		*/				
 
         console.log("Add session data")
-        var sql = "INSERT INTO tabla_sesion (idPaciente, NumberSession, idTerapeuta, gait_velocity, observations) VALUES (?)";
         // Read therapy configuration from conf file
         fs.readFile(therapyConfigPath, (err, data) => {
             if (err) throw err;
             console.log(data);
+	    // los datos de configuración procedentes de un JSON son parseados y almacenados en la variable config
             var config = JSON.parse(data);
             var terapist_id = "SELECT idtabla_terapeutas from tabla_terapeutas where NombreTerapeuta in ('" + (config.therapist_name.split(" "))[0] +"') AND ApellidoTerapeuta in ('" + (config.therapist_name.split(" "))[1] +"'); ";
             var patient_id = "SELECT idtabla_pacientes from tabla_pacientes where NombrePaciente in ('" + (config.patient_name.split(" "))[0] +"') AND ApellidoPaciente in ('" + (config.patient_name.split(" "))[(config.patient_name.split(" ").length) -1] +"'); ";
             var IDs = terapist_id + patient_id
+	    // SQL get patient and therapist id
             con.query(IDs , [1,2], function (err, result) {
                 if (err) throw err;
 				console.log(result)
@@ -523,133 +540,169 @@ io.on('connection', (socket) => {
                 terapist_id = result[0][0].idtabla_terapeutas;
                 patient_leg_length = config.leg_length;
                 var n_session = "SELECT COUNT(NumberSession) AS count from tabla_sesion WHERE idPaciente =" + patient_id + ";"
+		// SQL get patient session id
                 con.query(n_session, function (err, result) {
+		    if (err) throw err;
+		    n_session = result[0].count +1;
+		    // Definición de una variable con los datos necesarios para añadir la configuración de sesión a la base de datos
+		    var sessionConfig = [patient_id, n_session, terapist_id, config.gait_velocity, config.observations]; 
+		    var surgery = config.surgery;
+		    var sql = "INSERT INTO tabla_sesion (idPaciente, NumberSession, idTerapeuta, gait_velocity, observations) VALUES (?)";
+		    con.query(sql,[sessionConfig], function (err, result) {
+			    if (err) throw err;
+			    // Save Data of the session
+			    var sessionID = "SELECT idtable_session from tabla_sesion ORDER BY idtable_session DESC LIMIT 1;";
+			    con.query(sessionID , function (err, sessionID) {
 				    if (err) throw err;
-				    n_session = result[0].count +1;
-		    
-				    var sessionConfig = [patient_id, n_session, terapist_id, config.gait_velocity, config.observations];
+				    // Get last session ID
+				    sessionID = sessionID[0].idtable_session;
+				    var insertDataRows = ""
+				    // El almacenamiento de los datos durante la ssesión, en las listas, se ha realizado a la frecuencia del delsys (148Hz). En caso de no estar conectado, el almacenamiento ha sido a la frecuencia del sw (10Hz).  
+				    if (is_swalker_connected){
+					    var total_length = rom_right_vector.length;
+				    } else if (is_delsys_connected){
+					    var total_length = acc_rom_hip_vector.length;
+				    } 
 				    
-				    var surgery = config.surgery;
-				    con.query(sql,[sessionConfig], function (err, result) {
-					    if (err) throw err;
-					    // Save Data of the session
-					    var sessionID = "SELECT idtable_session from tabla_sesion ORDER BY idtable_session DESC LIMIT 1;";
-					    con.query(sessionID , function (err, sessionID) {
-						    if (err) throw err;
-						    // Get last session ID
-						    sessionID = sessionID[0].idtable_session;
-						    // Prepare joints angles data of the last session
-						    var insertDataRows = ""
-						    if (is_swalker_connected){
-							    var total_length = rom_right_vector.length;
-						    } else if (is_delsys_connected){
-							    //var total_length = tibiaL_accX_vector.length;
-							    var total_length = acc_rom_hip_vector.length;
-							    //var total_length = emg_activity_vector.length;
-						    } 
-						    
-						    for (let index = 0; index < total_length; index++) {
-							    if(is_swalker_connected){
-								    if (direction_vector[index] == 's'){
-									    var dir_vector =  0;
-								    } else if (direction_vector[index] == 'b'){
-									    var dir_vector = 1;
-								    } else if (direction_vector[index] == 'f'){
-									    var dir_vector = 2;
-								    } else if (direction_vector[index] == 'r'){
-									    var dir_vector = 3;
-								    } else if (direction_vector[index] == 'l'){
-									    var dir_vector = 4;
-								    } else {
-									    var dir_vector = 5;
-								    }
-							    }    
-									    
-							    if ((is_swalker_connected & is_delsys_connected)) {
-								    
-								    insertDataRows = "(" + (sessionID).toString() + "," + (time_stamp_vector[index]).toString() +","+ 
-												    (rom_left_vector[index]).toString() + "," + (rom_right_vector[index]).toString()  + "," + (load_vector[index]).toString() + "," + (dir_vector).toString() +  "," + 
-												    //(emg_activity_vector[index][0]).toString() + "," + (emg_binary_activation_vector[index][0]).toString() + "," + (emg_activity_vector[index][1]).toString() + "," + (emg_binary_activation_vector[index][1]).toString() +  "," + (emg_activity_vector[index][2]).toString()  + "," + (emg_binary_activation_vector[index][2]).toString()+  "," + (emg_activity_vector[index][3]).toString()  + "," + (emg_binary_activation_vector[index][3]).toString() +  "," + (emg_activity_vector[index][4]).toString()  + "," + (emg_binary_activation_vector[index][4]).toString() +  "," + (emg_activity_vector[index][5]).toString()  + "," + (emg_binary_activation_vector[index][5]).toString() +  "," + (emg_activity_vector[index][6]).toString()  + "," + (emg_binary_activation_vector[index][6]).toString()+  "," + (emg_activity_vector[index][7]).toString()  + "," + (emg_binary_activation_vector[index][7]).toString() + 
-												    //tibiaL_accX_vector[index].toString() + "," + tibiaR_accX_vector[index].toString() +  ");"
-												    acc_rom_hip_vector[index][1].toString() + "," + acc_rom_hip_vector[index][0] + ");"
-								    //var sql = "INSERT INTO data_sessions (idSesion, Date, left_hip, right_hip, weight_gauge, direction, emg_muscle_activity_s1,  muscle_binary_activation_s1, emg_muscle_activity_s2,  muscle_binary_activation_s2, emg_muscle_activity_s3,  muscle_binary_activation_s3,  emg_muscle_activity_s4,  muscle_binary_activation_s4,  emg_muscle_activity_s5,  muscle_binary_activation_s5, emg_muscle_activity_s6,  muscle_binary_activation_s6, emg_muscle_activity_s7,  muscle_binary_activation_s7, emg_muscle_activity_s8, muscle_binary_activation_s8, accX_s7, accY_s7, accZ_s7, accX_s3, accY_s3, accZ_s3) VALUES " + insertDataRows;
-								    var sql = "INSERT INTO data_sessions (idSesion, Date, left_hip, right_hip, weight_gauge, direction, accX_s7, accX_s3) VALUES " + insertDataRows;
-								    
-								    
-							    
-							    
-							    } else if(is_delsys_connected){
-								    // emg connected. No swalker.
-								    insertDataRows = "(" + (sessionID).toString() + "," + (time_stamp_vector[index]).toString() +","+ 
-												    //(emg_activity_vector[index][0]).toString() + "," + (emg_binary_activation_vector[index][0]).toString() + "," + (emg_activity_vector[index][1]).toString() + "," + (emg_binary_activation_vector[index][1]).toString() +  "," + (emg_activity_vector[index][2]).toString()  + "," + (emg_binary_activation_vector[index][2]).toString()+  "," + (emg_activity_vector[index][3]).toString()  + "," + (emg_binary_activation_vector[index][3]).toString() +  "," + (emg_activity_vector[index][4]).toString()  + "," + (emg_binary_activation_vector[index][4]).toString() +  "," + (emg_activity_vector[index][5]).toString()  + "," + (emg_binary_activation_vector[index][5]).toString() +  "," + (emg_activity_vector[index][6]).toString()  + "," + (emg_binary_activation_vector[index][6]).toString()+  "," + (emg_activity_vector[index][7]).toString()  + "," + (emg_binary_activation_vector[index][7]).toString() + 
-												    //tibiaL_accX_vector[index].toString() + "," + tibiaR_accX_vector[index].toString() +  ");"
-													acc_rom_hip_vector[index][1].toString() + "," + acc_rom_hip_vector[index][0].toString() + ");"
-								    //var sql = "INSERT INTO data_sessions (idSesion, Date, emg_muscle_activity_s1,  muscle_binary_activation_s1, emg_muscle_activity_s2,  muscle_binary_activation_s2, emg_muscle_activity_s3,  muscle_binary_activation_s3,  emg_muscle_activity_s4,  muscle_binary_activation_s4,  emg_muscle_activity_s5,  muscle_binary_activation_s5, emg_muscle_activity_s6,  muscle_binary_activation_s6, emg_muscle_activity_s7,  muscle_binary_activation_s7, emg_muscle_activity_s8, muscle_binary_activation_s8, accX_s7, accY_s7, accZ_s7, accX_s3, accY_s3, accZ_s3) VALUES " + insertDataRows;
-								    var sql = "INSERT INTO data_sessions (idSesion, Date, accX_s7,accX_s3) VALUES " + insertDataRows;
-								    
-								    
-							    } else if (is_swalker_connected){
-								    
-								    // swalker connected. No emg .
+				    // Se recorren las listas de dats aádiendo las muestras una a una como filas a la tabla de datos dde la bbdd.
+				    for (let index = 0; index < total_length; index++) {
+					// Redefinición del valor de la variale de dirección del SW.
+					if(is_swalker_connected){
+						if (direction_vector[index] == 's'){
+							var dir_vector =  0;
+						} else if (direction_vector[index] == 'b'){
+							var dir_vector = 1;
+						} else if (direction_vector[index] == 'f'){
+							var dir_vector = 2;
+						} else if (direction_vector[index] == 'r'){
+							var dir_vector = 3;
+						} else if (direction_vector[index] == 'l'){
+							var dir_vector = 4;
+						} else {
+							var dir_vector = 5;
+						}
+					}    
+					
+					// Redefinición de la peticion SQL para cada muestra de los datos a añadir.
+					if ((is_swalker_connected & is_delsys_connected)) {
+						
+						insertDataRows = "(" + (sessionID).toString() + "," + (time_stamp_vector[index]).toString() +","+ 
+										(rom_left_vector[index]).toString() + "," + (rom_right_vector[index]).toString()  + "," + (load_vector[index]).toString() + "," + (dir_vector).toString() +  "," + 
+										//(emg_activity_vector[index][0]).toString() + "," + (emg_binary_activation_vector[index][0]).toString() + "," + (emg_activity_vector[index][1]).toString() + "," + (emg_binary_activation_vector[index][1]).toString() +  "," + (emg_activity_vector[index][2]).toString()  + "," + (emg_binary_activation_vector[index][2]).toString()+  "," + (emg_activity_vector[index][3]).toString()  + "," + (emg_binary_activation_vector[index][3]).toString() +  "," + (emg_activity_vector[index][4]).toString()  + "," + (emg_binary_activation_vector[index][4]).toString() +  "," + (emg_activity_vector[index][5]).toString()  + "," + (emg_binary_activation_vector[index][5]).toString() +  "," + (emg_activity_vector[index][6]).toString()  + "," + (emg_binary_activation_vector[index][6]).toString()+  "," + (emg_activity_vector[index][7]).toString()  + "," + (emg_binary_activation_vector[index][7]).toString() + 
+										//tibiaL_accX_vector[index].toString() + "," + tibiaR_accX_vector[index].toString() +  ");"
+										acc_rom_hip_vector[index][1].toString() + "," + acc_rom_hip_vector[index][0] + ");"
+						//var sql = "INSERT INTO data_sessions (idSesion, Date, left_hip, right_hip, weight_gauge, direction, emg_muscle_activity_s1,  muscle_binary_activation_s1, emg_muscle_activity_s2,  muscle_binary_activation_s2, emg_muscle_activity_s3,  muscle_binary_activation_s3,  emg_muscle_activity_s4,  muscle_binary_activation_s4,  emg_muscle_activity_s5,  muscle_binary_activation_s5, emg_muscle_activity_s6,  muscle_binary_activation_s6, emg_muscle_activity_s7,  muscle_binary_activation_s7, emg_muscle_activity_s8, muscle_binary_activation_s8, accX_s7, accY_s7, accZ_s7, accX_s3, accY_s3, accZ_s3) VALUES " + insertDataRows;
+						var sql = "INSERT INTO data_sessions (idSesion, Date, left_hip, right_hip, weight_gauge, direction, accX_s7, accX_s3) VALUES " + insertDataRows;
+						
+						
+					
+					
+					} else if(is_delsys_connected){
+						// emg connected. No swalker.
+						insertDataRows = "(" + (sessionID).toString() + "," + (time_stamp_vector[index]).toString() +","+ 
+										//(emg_activity_vector[index][0]).toString() + "," + (emg_binary_activation_vector[index][0]).toString() + "," + (emg_activity_vector[index][1]).toString() + "," + (emg_binary_activation_vector[index][1]).toString() +  "," + (emg_activity_vector[index][2]).toString()  + "," + (emg_binary_activation_vector[index][2]).toString()+  "," + (emg_activity_vector[index][3]).toString()  + "," + (emg_binary_activation_vector[index][3]).toString() +  "," + (emg_activity_vector[index][4]).toString()  + "," + (emg_binary_activation_vector[index][4]).toString() +  "," + (emg_activity_vector[index][5]).toString()  + "," + (emg_binary_activation_vector[index][5]).toString() +  "," + (emg_activity_vector[index][6]).toString()  + "," + (emg_binary_activation_vector[index][6]).toString()+  "," + (emg_activity_vector[index][7]).toString()  + "," + (emg_binary_activation_vector[index][7]).toString() + 
+										//tibiaL_accX_vector[index].toString() + "," + tibiaR_accX_vector[index].toString() +  ");"
+										    acc_rom_hip_vector[index][1].toString() + "," + acc_rom_hip_vector[index][0].toString() + ");"
+						//var sql = "INSERT INTO data_sessions (idSesion, Date, emg_muscle_activity_s1,  muscle_binary_activation_s1, emg_muscle_activity_s2,  muscle_binary_activation_s2, emg_muscle_activity_s3,  muscle_binary_activation_s3,  emg_muscle_activity_s4,  muscle_binary_activation_s4,  emg_muscle_activity_s5,  muscle_binary_activation_s5, emg_muscle_activity_s6,  muscle_binary_activation_s6, emg_muscle_activity_s7,  muscle_binary_activation_s7, emg_muscle_activity_s8, muscle_binary_activation_s8, accX_s7, accY_s7, accZ_s7, accX_s3, accY_s3, accZ_s3) VALUES " + insertDataRows;
+						var sql = "INSERT INTO data_sessions (idSesion, Date, accX_s7,accX_s3) VALUES " + insertDataRows;
+						
+						
+					} else if (is_swalker_connected){
+						
+						// swalker connected. No emg .
 
-									    insertDataRows = "(" + (sessionID).toString() + "," + (time_stamp_vector[index]).toString() +","+ 
-													    (rom_left_vector[index]).toString() + "," + (rom_right_vector[index]).toString()  + "," + (load_vector[index]).toString() + "," + (dir_vector).toString()  + ");"
-									    var sql = "INSERT INTO data_sessions (idSesion, Date, left_hip, right_hip, weight_gauge, direction) VALUES " + insertDataRows;
-								    
-								    
-							    
-							    }
-							    //console.log(sql);
-							    con.query(sql, function (err, result) {
-								    
-								    if (err) throw err;
-							    });
-						    }
-						    console.log("Recorded Session Data");
-						    socket.emit("monitoring:recorded_sessionData");
-					    });
-				    });
-			   });
+							insertDataRows = "(" + (sessionID).toString() + "," + (time_stamp_vector[index]).toString() +","+ 
+											(rom_left_vector[index]).toString() + "," + (rom_right_vector[index]).toString()  + "," + (load_vector[index]).toString() + "," + (dir_vector).toString()  + ");"
+							var sql = "INSERT INTO data_sessions (idSesion, Date, left_hip, right_hip, weight_gauge, direction) VALUES " + insertDataRows;
+						
+						
+					
+					}
+					//console.log(sql);
+					con.query(sql, function (err, result) {
+						
+						if (err) throw err;
+					});
+				}
+				console.log("Recorded Session Data");
+				// Emisión de un mensaje que indica que lo datos han sido grabados correctamente. El objetivo de este mensaje es que no se empiece una nueva terapia sin haber grabado la anterior.
+				// Por lo tanto, hasta que no se recibe este mensaje en therapy_moitring, al pulsar en "nueva terapia" salta un aviso informando de que no es posible empezar una nueva terapia porque todavía se están almacenando los datos anteiores.
+				socket.emit("monitoring:recorded_sessionData");
+			});
+		    });
+		});
            });
 
         })
 	
 	
-	//download acc excel
+	//Creación de un archivo excel con todos los datos de acelerómetro de los sensores del delsys
 	if(is_delsys_connected){
-		const workbook = new ExcelJS.Workbook();
-        const worksheetx = workbook.addWorksheet('X Axis');
-        const worksheety = workbook.addWorksheet('Y Axis');
-        const worksheetz = workbook.addWorksheet('Z Axis');
+	    // Creación de un archivo con 3 hojas, cada una de las cuales alojará a información de uno de los ejes de los 8 sensores.
+	    const workbook = new ExcelJS.Workbook();
+	    const worksheetx = workbook.addWorksheet('X Axis');
+	    const worksheety = workbook.addWorksheet('Y Axis');
+	    const worksheetz = workbook.addWorksheet('Z Axis');
 	
-        worksheetx.addRow(["RF D X", "BF D X" ,"TA D X", "GM D X", "RF I X", "BF I X", "TA I X", "GM I X"])
-        worksheety.addRow(["RF D Y", "BF D Y" ,"TA D Y", "GM D Y", "RF I Y", "BF I Y", "TA I Y", "GM I Y"])
-        worksheetz.addRow(["RF D Z", "BF D Z" ,"TA D Z", "GM D Z", "RF I Z", "BF I Z", "TA I Z", "GM I Z"])
-		
-        for (var i = 0; i < acc_all_data.length; i++) {
-	    worksheetx.addRow([acc_all_data[i][0], acc_all_data[i][3] , acc_all_data[i][6], acc_all_data[i][9], acc_all_data[i][12], acc_all_data[i][15], acc_all_data[i][18], acc_all_data[i][21]]).commit()
-	    worksheety.addRow([acc_all_data[i][1], acc_all_data[i][4] ,acc_all_data[i][7], acc_all_data[i][10], acc_all_data[i][13], acc_all_data[i][16], acc_all_data[i][19], acc_all_data[i][22]]).commit()
-	    worksheetz.addRow([acc_all_data[i][2], acc_all_data[i][5] ,acc_all_data[i][8], acc_all_data[i][11], acc_all_data[i][14], acc_all_data[i][17], acc_all_data[i][20], acc_all_data[i][23]]).commit()
-		
-		
-	}	
-	workbook.xlsx.writeFile('all_acc_datax.xlsx');
-	
-	// Para asegurar que se ha almacenado el excel correcamente, la descarga comenzará en 5 segundos.
-	n = 1;
-	const limitedInterval = setInterval(() => {
-	    if (n == 4){
-		    socket.emit("monitoring:downloadAccExcellx");
-		    console.log("sent")
+	    worksheetx.addRow(["RF D X", "BF D X" ,"TA D X", "GM D X", "RF I X", "BF I X", "TA I X", "GM I X"])
+	    worksheety.addRow(["RF D Y", "BF D Y" ,"TA D Y", "GM D Y", "RF I Y", "BF I Y", "TA I Y", "GM I Y"])
+	    worksheetz.addRow(["RF D Z", "BF D Z" ,"TA D Z", "GM D Z", "RF I Z", "BF I Z", "TA I Z", "GM I Z"])
+		    
+	    for (var i = 0; i < acc_all_data.length; i++) {
+		worksheetx.addRow([acc_all_data[i][0], acc_all_data[i][3] , acc_all_data[i][6], acc_all_data[i][9], acc_all_data[i][12], acc_all_data[i][15], acc_all_data[i][18], acc_all_data[i][21]]).commit()
+		worksheety.addRow([acc_all_data[i][1], acc_all_data[i][4] ,acc_all_data[i][7], acc_all_data[i][10], acc_all_data[i][13], acc_all_data[i][16], acc_all_data[i][19], acc_all_data[i][22]]).commit()
+		worksheetz.addRow([acc_all_data[i][2], acc_all_data[i][5] ,acc_all_data[i][8], acc_all_data[i][11], acc_all_data[i][14], acc_all_data[i][17], acc_all_data[i][20], acc_all_data[i][23]]).commit()
+		    
+		    
+	    }	
+	    workbook.xlsx.writeFile('all_acc_datax.xlsx');
 	    
-	    }
-	    if(n == 5){
-
-		    clearInterval(limitedInterval);	
-	    }	 
-	    n++
+	    // Para asegurar que se ha almacenado el excel correcamente, la descarga comenzará en 5 segundos.
+	    n = 1;
+	    const limitedInterval = setInterval(() => {
+		if (n == 4){
+			socket.emit("monitoring:downloadAccExcellx");
+			console.log("sent")
 		
-	}, 1000)
+		}
+		if(n == 5){
+
+			clearInterval(limitedInterval);	
+		}	 
+		n++
+		    
+	    }, 1000)
+	}
+	
+	//Creación de un archivo excel con los datos del sensor EMG Werium (emg1 y emg2)
+	if(is_ble_connected){
+	    // Creación de un archivo con 3 hojas, cada una de las cuales alojará a información de uno de los ejes de los 8 sensores.
+	    const workbook = new ExcelJS.Workbook();
+	    const worksheet = workbook.addWorksheet('EMG');
+
+	
+	    worksheet.addRow(["CHANNEL 1", "CHANNEL 2"])
+	   	    
+	    for (var i = 0; i < emg1_vector.length; i++) {
+		worksheet.addRow([emg1_vector[i], emg2_vector[i]]).commit()
+		   
+	    }	
+	    workbook.xlsx.writeFile('EMG_Werium.xlsx');
+	    
+	    // Para asegurar que se ha almacenado el excel correcamente, la descarga comenzará en 5 segundos.
+	    n = 1;
+	    const limitedInterval = setInterval(() => {
+		if (n == 4){
+			socket.emit("monitoring:downloadEMGWerium");
+		
+		}
+		if(n == 5){
+
+			clearInterval(limitedInterval);	
+		}	 
+		n++
+		    
+	    }, 1000)
 	}
 	
     });
@@ -809,8 +862,7 @@ io.on('connection', (socket) => {
     app.get('/downloadpatients', (req, res) => setTimeout(function(){ res.download('./Patients_DB.xlsx'); }, 1000))
 
     app.get('/downloadaccdata1', (req, res) => setTimeout(function(){ res.download('./all_acc_datax.xlsx'); }, 1000))
-    app.get('/downloadaccdata2', (req, res) => setTimeout(function(){ res.download('./all_acc_datay.xlsx'); }, 1000))
-    app.get('/downloadaccdata3', (req, res) => setTimeout(function(){ res.download('./all_acc_dataz.xlsx'); }, 1000))
+    app.get('/downloadaccEMGWerium', (req, res) => setTimeout(function(){ res.download('./EMG_Werium.xlsx'); }, 1000))
 
     //GET PATIENT INFO AND AUTOFILL IN "Therapy Settings" (DATABASE)    (therapy_settings.js)
     socket.on('get_patient_info',function(data){
@@ -818,6 +870,7 @@ io.on('connection', (socket) => {
         var name = data.patient_name.split(" ")[0];
         var surname =  data.patient_name.split(" ")[(data.patient_name.split(" ").length -1 )];
         var patient_id = "";
+	// Peticion SQL para obtener los datos almacenados en la tabla de pacientes de un paciente en concreto.
         var sql_patient = "SELECT * FROM tabla_pacientes WHERE NombrePaciente='" + name.toString() + "' AND ApellidoPaciente='" + surname.toString() + "';";
         console.log(sql_patient);
         con.query(sql_patient, function (err, patient_data) {
@@ -827,29 +880,30 @@ io.on('connection', (socket) => {
             console.log(patient_data[0].idtabla_pacientes);
             if (patient_id =! undefined) {
                 patient_id = patient_data[0].idtabla_pacientes;
-               
-				patient_age = patient_data[0].patiente_age; test_rom_right_vector
-				patient_weight = patient_data[0].patiente_weight;
-				global_patient_weight = parseFloat(patient_data[0].patiente_weight);
-				patient_leg_length = patient_data[0].leg_length;
-				patient_hip_joint = patient_data[0].hip_joint;
-				var surgery = patient_data[0].surgery;
-				var estado_fisico = patient_data[0].estado_fisico;
-				var estado_cognitivo = patient_data[0].estado_cognitivo;
-				console.log("patient_age: " + patient_age.toString() + " patient_weight: " + patient_weight.toString());
-				socket.emit('set_patient_info', {
-					patient_age: patient_age,
-					patient_weight: patient_weight,
-					patient_leg_length: patient_leg_length,
-					patient_hip_joint: patient_hip_joint,
-					patient_surgery: surgery,
-					estado_fisico: estado_fisico,
-					estado_cognitivo: estado_cognitivo,
-					
-				})
 
-			}
-                
+		patient_age = patient_data[0].patiente_age; test_rom_right_vector
+		patient_weight = patient_data[0].patiente_weight;
+		global_patient_weight = parseFloat(patient_data[0].patiente_weight);
+		patient_leg_length = patient_data[0].leg_length;
+		patient_hip_joint = patient_data[0].hip_joint;
+		var surgery = patient_data[0].surgery;
+		var estado_fisico = patient_data[0].estado_fisico;
+		var estado_cognitivo = patient_data[0].estado_cognitivo;
+		console.log("patient_age: " + patient_age.toString() + " patient_weight: " + patient_weight.toString());
+		// emisión de un mensaje por websocket a therapy_settings.js con la información solicitada.
+		socket.emit('set_patient_info', {
+			patient_age: patient_age,
+			patient_weight: patient_weight,
+			patient_leg_length: patient_leg_length,
+			patient_hip_joint: patient_hip_joint,
+			patient_surgery: surgery,
+			estado_fisico: estado_fisico,
+			estado_cognitivo: estado_cognitivo,
+			
+		})
+
+	    }
+
         });
     })
     
@@ -859,11 +913,15 @@ io.on('connection', (socket) => {
 	//Get command value
 	direction_char  = data.direction_char;
 	if (therapy_speed == "high"){
-		therapy_speed = 'f';
+	    therapy_speed = 'f';
+	} else if (therapy_speed == 'f'){
+	    therapy_speed = 'f';
 	} else if (therapy_speed == 'slow'){
-		therapy_speed = 's';
+	    therapy_speed = 's';
+	} else if (therapy_speed == 's'){
+	    therapy_speed = 's';
 	} else{
-		therapy_speed = 'n';
+	    therapy_speed = 'n';
 	}
 
 	var cmd = ''  //Command var to send
@@ -895,6 +953,8 @@ io.on('connection', (socket) => {
             emg_connection_status: is_delsys_connected,
         })
         
+	// Aumentamos el tiempo trascurrido desde el último mensaje. Si este tiempo supera los 15 segundos, asumimos que se ha desconectado el dispositivo en cuestión y cerramos el socket. 
+	// La variable que aloja los milisegundos trascurridos se reinicia a 0 cada vez que se recibe un nuevo mensaje. 
         if(is_swalker_connected){
 		msecondsFromLastMessage_swalker += PLOTSAMPLINGTIME;
 		if (msecondsFromLastMessage_swalker > 15000){
@@ -969,25 +1029,6 @@ io.on('connection', (socket) => {
             })
         });
     });
-    
-    /*
-    socket.on('deleted_patient', function(iddeleted) {
-		console.log("deleted  patient 2");
-        console.log(iddeleted);
-        var con = mysql.createConnection({
-            host: "localhost",
-            user: "root",
-            password: "mysql",
-            database: "swdb",
-            multipleStatements: true
-          });
-            con.connect(function(err) {
-                if (err) throw err;
-                console.log("Eliminado");
-
-            });
-    });
-*/
 
     // SOLICITUD DE CALIBRACIÓN (THERAPY_MONITORING.JS).
     socket.on('monitoring:configure_robot', function(callbackFn) {
@@ -1145,6 +1186,34 @@ io.on('connection', (socket) => {
             client_delsys_start.write('#record');
         }
     });
+    
+    // CONEXIÓN CON DISPOSITIVO BLE Y SUBSCRIPCIÓN A CARACTERÍSTICA (THERAPY_MONITORING.JS)
+    socket.on('monitoring:connect_ble', function(callbackFn) {
+	if(!is_ble_connected){
+	    console.log("not connected");
+	    device_object, characteristic_object = getDeviceAndCharObjects(socket, ble_macAddr, ble_service, ble_characteristic)
+	    if (characteristic_object != null){
+		subscribeToChar(characteristic_object)
+	    }
+	} else {
+	    socket.emit('monitoring:connection_status',{
+               device: "ble",
+               status:0});
+	}
+    });
+    
+    // DESCONEXION DEL SOCKET DE VR  (THERAPY_MONITORING.JS)
+    socket.on('monitoring:disconnect_ble', function(callbackFn) {
+        if(is_ble_connected){
+	    device_object.disconnect()
+	    .then(function(){
+		destroy();
+	    })
+	    .catch(function(err){
+		console.log("No ha sido posible desconectar el dispositivo BLE" + err)
+	    })
+	}
+    });
 
     // CONEXION DEL SOCKET DE VR  (THERAPY_MONITORING.JS)
     socket.on('monitoring:connect_vr', function(callbackFn) {
@@ -1176,6 +1245,16 @@ io.on('connection', (socket) => {
         }) 
     });
     
+    // SE HA PULSADO EL BOTÓN JUEGO 1 EN THERAPY MONITORING
+    socket.on('monitoring:juego1', function(callbackFn){
+	socket['VR_socket'].write('#o1');
+    })
+    
+    // SE HA PULSADO EL BOTÓN JUEGO 2 EN THERAPY MONITORING
+    socket.on('monitoring:juego2', function(callbackFn){
+	socket['VR_socket'].write('#o2');
+    })
+    
     // iNDICA EL INICIO DE LA SESIÓN (THERAPY_MONITORING.JS) eNVIADO AL PULSAR EL BOTÓN START.-
     socket.on('monitoring:start', function(callbackFn) {
 
@@ -1194,6 +1273,16 @@ io.on('connection', (socket) => {
 
         // Start recording
         record_therapy = true;
+	
+	// BLE
+	if(is_ble_connected & (characteristic_object != null)){
+	    emg1_vector = [];
+	    emg2_vector = [];
+	    // change data streaming to channel 3 -> emg1,emg2
+	    characteristic_object.writeValue(Buffer.from("o3"))
+	    // Send command to start streaming
+	    characteristic_object.writeValue(Buffer.from("os"))
+	}
 
         if(is_delsys_connected) {
             console.log("----------------RECORD--------------------");
@@ -1254,6 +1343,7 @@ function stopSwalker(){
     .catch((err) => console.log('Error', err))
 }
 
+// Funcion de conversión de un mensaje a string y parseo de mensajes individuales. Devuelve: booleano que indica si ya se ha recibido el primer mensaje; lista con los mensajes que se han parseado.
 function hex2a_general(hexx, lasthex, is_first_data) {
     var hex = hexx.toString();//force conversion
     var message = [];
@@ -1285,6 +1375,8 @@ function hex2a_general(hexx, lasthex, is_first_data) {
     return message; 
 }
 
+// Función de conexión bluetooth de un dispositivo
+// argumentos: socket (websocket) por el que se emite el mensaje de stado de la conexión, variable donde se ha creado el objeto bt, booleano que indica el estado de conexión actual con el dispositivo, string que identifica el dispositivo.
 function connect_bt_device(socket, bt_object, status_boolean, str_device){
 		
 	if (!status_boolean){
@@ -1372,6 +1464,8 @@ function connect_bt_device(socket, bt_object, status_boolean, str_device){
 	
 }
 
+// Función de desconexión bluetooth de un dispositivo
+// argumentos: socket (websocket) por el que se emite el mensaje de stado de la conexión, variable donde se ha creado el objeto bt, booleano que indica el estado de conexión actual con el dispositivo, string que identifica el dispositivo.
 function disconnect_bt_device(socket, bt_object, status_boolean, str_device){
     if (status_boolean){
 		bt_object.close()
@@ -1396,7 +1490,7 @@ function disconnect_bt_device(socket, bt_object, status_boolean, str_device){
 	
 }
 
-
+// función de decodificación de 4 bytes a float, almacenamiento de losacelerómetros y calculo del rom de cadera a partir de los mismos
 function decodeFloat(buf1, last_index){
 	let index_channel = last_index
 
@@ -1500,4 +1594,173 @@ function decodeFloat(buf1, last_index){
 	
 }
 
+
+// Esta función escanea los dispositivos ble cercanos y comprueba que esté el solicitado. A continuiación, 
+function getDeviceAndCharObjects(socket, ble_macAddr, ble_service, ble_characteristic){
+	// redirigimos el objeto a null por si no se encuentra la caracteristica o no es posible su subscripción
+	var characteristic_object_fn = null
+	// Escaneo de dispositivos BLE cercanos
+	bluetooth.defaultAdapter()
+	.then(function(adapter){
+	    adapter.isDiscovering()
+	    .then(function(is_discovering){
+		    if(!is_discovering){
+			adapter.startDiscovery()
+			.then(function() {
+			    is_discovering = true;
+			})
+			.catch(function(err){
+			    console.log("error trying discovering")
+			})
+		    }
+		    console.log("discovery started...");
+		    adapter.waitDevice(ble_macAddr)
+		    .then(function(device) {
+			    console.log("find device!");
+			    device_object = device
+			    device_object.connect()
+			    .then(function(){
+				    console.log("Successfully connected");
+				    is_ble_connected = true
+
+				    device_object.gatt()
+				    .then(function(gattServer){
+					    const gattServer_ble = gattServer
+					    gattServer_ble.getPrimaryService(ble_service)
+					    .then(function(service){
+						    console.log("Service found!")
+						    const ble_service = service
+						    ble_service.getCharacteristic(ble_characteristic)
+						    .then(function(char){
+							    console.log("found characteristic!")
+							    characteristic_object_fn = char
+							    
+						    })
+						    .catch(function(err){
+							    console.log("error at getCharacteristic(): " + err)
+						    });
+							    
+					    })
+					    .catch(function(err) {
+						    console.log("error while getting service: " + err)
+					    });
+				    })
+				    .catch(function(err){
+					    console.log("error while getting gattServer: " + err)
+				    });
+			    })
+			    .catch(function(err){
+				    console.log("error while connecting device: " + err)
+				    socket.emit('monitoring:connection_status', {
+					    device: "ble",
+					    // status--> 0: connect, 1: disconnect, 2: not found/error
+					    status: 2
+				    })
+			    });
+			    
+		    })
+		    .catch(function(err){
+			    console.log("could not find device. " + err)
+			    socket.emit('monitoring:connection_status', {
+				    device: "ble",
+				    // status--> 0: connect, 1: disconnect, 2: not found/error
+				    status: 2
+			    })
+		    });
+			    
+	    })
+	    .catch(function(err){
+		    console.log("error while trying startDiscovery(): " + err)
+		    socket.emit('bluetooth:connection_status', {
+			    device: "ble",
+			    // status--> 0: connect, 1: disconnect, 2: not found/error
+			    status: 2
+		    })
+	    });
+    
+	})
+	.catch(function(err) {
+	    console.log("Failed to find adapter" + err)
+	});
+	
+	return device_object, characteristic_object
+	
+}
+
+index_channel_emg = 0
+function subscribeToChar(char_obj){
+    
+    characteristic_object.startNotifications()
+    .then(function(){
+	// emisión del mensaje de estado de conexión a therapy_monitoring
+	    console.log("successfully subscribe to characteristic!")
+	    socket.emit('monitoring:connection_status', {
+		    device: "ble",
+		    // status--> 0: connect, 1: disconnect, 2: not paired
+		    status: 0
+	    })
+	    
+    })
+    .catch(function(err){
+	    console.log("error while subscribing to char: " + err)
+    });
+							    
+    characteristic_object.on("valuechanged", buffer => {
+	let posInBuf = 0;
+	let len = Buffer.byteLength(buffer);
+	
+	while (posInBuf < (len/3)){
+	    var data = [buffer[posInBuf+2], buffer[posInBuf+1], buffer[posInBuf]];
+	    float = convert3BtoFloat(data)
+	    emg_raw = calibrateEMG(float)
+	    
+	    index_channel_emg = storeEMG(emg_raw, index_channel_emg)
+	    posInBuf = posInBuf+3;
+	}
+    })
+}
+
+function convert3BtoFloat(data){
+    // create a buffer
+    var buff = new ArrayBuffer(3)
+    // create a data view of it
+    var view = new DataView(buff);
+    
+    // set bytes
+    data.forEach(function(b,i) {
+	view.setUint8(i,b);
+    })
+    
+    // Read the bits as a float; note that by doing this, we're implicitly converting it from a 32-bit float into javascripts naive 64-bit double.
+    var float = view.getFloat32(0)
+    return float 
+}
+
+function calibretaEMG(value){
+    var vRef = 2420.0
+    var ADC_max = Math.pow(2,23)-1;  // 2420mV
+    var ADC_sensitivity = vRef/ADC_max;   //LSB
+    var gain = 12.0
+    
+    var emg_raw = (value*ADC_sensitivity)/gain
+    return emg_raw;
+}
+
+
+function storeEMG(value, channel){
+    if(channel == 0){
+	emg1 = value;
+	console.log(emg1)
+	if(record_therapy){
+	    emg1_vector.push(emg1)
+	}
+    } else if(channel == 1){
+	emg2 = value;
+	if(record_therapy){
+	    emg2_vector.push(emg2)
+	}
+    }
+    channel ++
+    return channel
+}
 

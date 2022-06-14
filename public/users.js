@@ -23,15 +23,15 @@ socket.emit('refreshlist');
 var n_session;
 
 socket.on('datasessions', function(datasessions) {
-	console.log(datasessions);
-	var l_rom;
-	var r_rom ;
-	var load;
-	$('#view_session').on('click', function() {
+    console.log(datasessions);
+    var l_rom;
+    var r_rom ;
+    var load;
+    $('#view_session').on('click', function() {
 	l_rom = [];
 	r_rom = [];
 	load = [];
-	
+	// creamos 3 nuevas variables con los datos de rom dcha rom izq y peso
 	for (i = 0; i < datasessions.length; i++) {
 		if (datasessions[i].idSesion == n_session){
 		   l_rom.push(datasessions[i].left_hip);
@@ -40,49 +40,131 @@ socket.on('datasessions', function(datasessions) {
 		   
 		};
 	};
-			
+	
+	r_rom = [36.5585, 36.5259, 36.4962, 36.4689, 36.4408, 36.3909, 36.335, 36.271, 36.1943, 36.0842, 35.9539, 35.8015, 35.6229, 35.3996, 35.1472, 34.8671, 34.5588, 34.2085, 33.8337, 33.4375, 33.021, 32.5716, 32.1055, 31.6253, 31.1309, 30.6092, 30.0759, 29.5333, 28.982, 28.4101, 27.8326, 27.2519, 26.6686, 26.0712, 25.4745, 24.881, 24.2907, 23.6928, 23.0991, 22.5103, 21.9251, 21.3314, 20.7416, 20.1566, 19.576, 18.9904, 18.4092, 17.8328, 17.26, 16.6806, 16.1042, 15.5317, 14.9625, 14.3888, 13.8194, 13.2551, 12.6957, 12.1344, 11.5788, 11.0296, 10.4863, 9.943, 9.4059, 8.8751, 8.35, 7.8256, 7.307, 6.7943, 6.2873, 5.782, 5.2825, 4.789, 4.3013, 3.8162, 3.3365, 2.8623, 2.3931, 1.9264, 1.4649, 1.0089, 0.55876, 0.11339, -0.32492, -0.75545, -1.1777, -1.592, -1.9966, -2.3906, -2.7733, -3.1449, -3.503, -3.8462, -4.1732, -4.483, -4.7732, -5.0422, -5.2883, -5.5107, -5.7056, -5.8703, -6.0025, -6.1013, -6.1635, -6.1873, -6.1715, -6.117, -6.0199, -5.8784, -5.691, -5.4588, -5.1776, -4.8459, -4.4624, -4.0296, -3.5434, -3.0028, -2.408, -1.7637, -1.0667, -0.31824, 0.47919, 1.3179, 2.1989, 3.1186, 4.0724, 5.0499, 6.0517, 7.0737, 8.1109, 9.1527, 10.2008, 11.2518, 12.3017, 13.3403, 14.3718, 15.3946, 16.4062, 17.397, 18.3728, 19.3328, 20.2749, 21.189, 22.0824, 22.9548, 23.805, 24.6222, 25.4163, 26.1884, 26.9377, 27.6538, 28.3466, 29.0165, 29.6621, 30.2707, 30.8549, 31.416, 31.9538, 32.4557, 32.9354, 33.3942, 33.8315, 34.2332, 34.613, 34.9714, 35.3072, 35.6047, 35.8803, 36.136, 36.3716, 36.5725, 36.7541, 36.9172, 37.0604, 37.1663, 37.2525, 37.3207, 37.3704, 37.3856, 37.3845, 37.3695, 37.3407, 37.2817, 37.2124, 37.1364, 37.0547, 36.9514, 36.8478, 36.7477, 36.6527, 36.5465, 36.4502, 36.367, 36.2969, 36.2222, 36.1618, 36.1168, 36.085, 36.046, 36.0174, 35.9986, 35.9863, 35.9539, 35.8015, 35.6229, 35.3996, 35.1472, 34.8671, 34.5588, 34.2085, 33.8337, 33.4375, 33.021, 32.5716, 32.1055, 31.6253, 31.1309, 30.6092, 30.0759, 29.5333, 28.982, 28.4101, 27.8326, 27.2519, 26.6686, 26.0712, 25.4745, 24.881, 24.2907, 23.6928, 23.0991, 22.5103, 21.9251, 21.3314, 20.7416, 20.1566, 19.576, 18.9904, 18.4092, 17.8328, 17.26, 16.6806, 16.1042, 15.5317, 14.9625, 14.3888, 13.8194, 13.2551, 12.6957, 12.1344, 11.5788, 11.0296, 10.4863, 9.943, 9.4059, 8.8751, 8.35, 7.8256, 7.307, 6.7943, 6.2873, 5.782, 5.2825, 4.789, 4.3013, 3.8162, 3.3365, 2.8623, 2.3931, 1.9264, 1.4649, 1.0089, 0.55876, 0.11339, -0.32492, -0.75545, -1.1777, -1.592, -1.9966, -2.3906, -2.7733, -3.1449, -3.503, -3.8462, -4.1732, -4.483, -4.7732, -5.0422, -5.2883, -5.5107, -5.7056, -5.8703, -6.0025, -6.1013, -6.1635, -6.1873, -6.1715, -6.117, -6.0199, -5.8784, -5.691, -5.4588, -5.1776, -4.8459, -4.4624, -4.0296, -3.5434, -3.0028, -2.408, -1.7637, -1.0667, -0.31824, 0.47919, 1.3179, 2.1989, 3.1186, 4.0724, 5.0499, 6.0517, 7.0737, 8.1109, 9.1527, 10.2008, 11.2518, 12.3017, 13.3403, 14.3718, 15.3946, 16.4062, 17.397, 18.3728, 19.3328, 20.2749, 21.189, 22.0824, 22.9548, 23.805, 24.6222, 25.4163, 26.1884, 26.9377, 27.6538, 28.3466, 29.0165, 29.6621, 30.2707, 30.8549, 31.416, 31.9538, 32.4557, 32.9354, 33.3942, 33.8315, 34.2332, 34.613, 34.9714, 35.3072, 35.6047, 35.8803, 36.136, 36.3716, 36.5725, 36.7541, 36.9172, 37.0604, 37.1663, 37.2525, 37.3207, 37.3704, 37.3856, 37.3845, 37.3695, 37.3407, 37.2817, 37.2124, 37.1364, 37.0547, 36.9514, 36.8478, 36.7477, 36.6527, 36.5465, 36.4502];
+	load = [36.5585, 36.5259, 36.4962, 36.4689, 36.4408, 36.3909, 36.335, 36.271, 36.1943, 36.0842, 35.9539, 35.8015, 35.6229, 35.3996, 35.1472, 34.8671, 34.5588, 34.2085, 33.8337, 33.4375, 33.021, 32.5716, 32.1055, 31.6253, 31.1309, 30.6092, 30.0759, 29.5333, 28.982, 28.4101, 27.8326, 27.2519, 26.6686, 26.0712, 25.4745, 24.881, 24.2907, 23.6928, 23.0991, 22.5103, 21.9251, 21.3314, 20.7416, 20.1566, 19.576, 18.9904, 18.4092, 17.8328, 17.26, 16.6806, 16.1042, 15.5317, 14.9625, 14.3888, 13.8194, 13.2551, 12.6957, 12.1344, 11.5788, 11.0296, 10.4863, 9.943, 9.4059, 8.8751, 8.35, 7.8256, 7.307, 6.7943, 6.2873, 5.782, 5.2825, 4.789, 4.3013, 3.8162, 3.3365, 2.8623, 2.3931, 1.9264, 1.4649, 1.0089, 0.55876, 0.11339, -0.32492, -0.75545, -1.1777, -1.592, -1.9966, -2.3906, -2.7733, -3.1449, -3.503, -3.8462, -4.1732, -4.483, -4.7732, -5.0422, -5.2883, -5.5107, -5.7056, -5.8703, -6.0025, -6.1013, -6.1635, -6.1873, -6.1715, -6.117, -6.0199, -5.8784, -5.691, -5.4588, -5.1776, -4.8459, -4.4624, -4.0296, -3.5434, -3.0028, -2.408, -1.7637, -1.0667, -0.31824, 0.47919, 1.3179, 2.1989, 3.1186, 4.0724, 5.0499, 6.0517, 7.0737, 8.1109, 9.1527, 10.2008, 11.2518, 12.3017, 13.3403, 14.3718, 15.3946, 16.4062, 17.397, 18.3728, 19.3328, 20.2749, 21.189, 22.0824, 22.9548, 23.805, 24.6222, 25.4163, 26.1884, 26.9377, 27.6538, 28.3466, 29.0165, 29.6621, 30.2707, 30.8549, 31.416, 31.9538, 32.4557, 32.9354, 33.3942, 33.8315, 34.2332, 34.613, 34.9714, 35.3072, 35.6047, 35.8803, 36.136, 36.3716, 36.5725, 36.7541, 36.9172, 37.0604, 37.1663, 37.2525, 37.3207, 37.3704, 37.3856, 37.3845, 37.3695, 37.3407, 37.2817, 37.2124, 37.1364, 37.0547, 36.9514, 36.8478, 36.7477, 36.6527, 36.5465, 36.4502, 36.367, 36.2969, 36.2222, 36.1618, 36.1168, 36.085, 36.046, 36.0174, 35.9986, 35.9863, 35.9539, 35.8015, 35.6229, 35.3996, 35.1472, 34.8671, 34.5588, 34.2085, 33.8337, 33.4375, 33.021, 32.5716, 32.1055, 31.6253, 31.1309, 30.6092, 30.0759, 29.5333, 28.982, 28.4101, 27.8326, 27.2519, 26.6686, 26.0712, 25.4745, 24.881, 24.2907, 23.6928, 23.0991, 22.5103, 21.9251, 21.3314, 20.7416, 20.1566, 19.576, 18.9904, 18.4092, 17.8328, 17.26, 16.6806, 16.1042, 15.5317, 14.9625, 14.3888, 13.8194, 13.2551, 12.6957, 12.1344, 11.5788, 11.0296, 10.4863, 9.943, 9.4059, 8.8751, 8.35, 7.8256, 7.307, 6.7943, 6.2873, 5.782, 5.2825, 4.789, 4.3013, 3.8162, 3.3365, 2.8623, 2.3931, 1.9264, 1.4649, 1.0089, 0.55876, 0.11339, -0.32492, -0.75545, -1.1777, -1.592, -1.9966, -2.3906, -2.7733, -3.1449, -3.503, -3.8462, -4.1732, -4.483, -4.7732, -5.0422, -5.2883, -5.5107, -5.7056, -5.8703, -6.0025, -6.1013, -6.1635, -6.1873, -6.1715, -6.117, -6.0199, -5.8784, -5.691, -5.4588, -5.1776, -4.8459, -4.4624, -4.0296, -3.5434, -3.0028, -2.408, -1.7637, -1.0667, -0.31824, 0.47919, 1.3179, 2.1989, 3.1186, 4.0724, 5.0499, 6.0517, 7.0737, 8.1109, 9.1527, 10.2008, 11.2518, 12.3017, 13.3403, 14.3718, 15.3946, 16.4062, 17.397, 18.3728, 19.3328, 20.2749, 21.189, 22.0824, 22.9548, 23.805, 24.6222, 25.4163, 26.1884, 26.9377, 27.6538, 28.3466, 29.0165, 29.6621, 30.2707, 30.8549, 31.416, 31.9538, 32.4557, 32.9354, 33.3942, 33.8315, 34.2332, 34.613, 34.9714, 35.3072, 35.6047, 35.8803, 36.136, 36.3716, 36.5725, 36.7541, 36.9172, 37.0604, 37.1663, 37.2525, 37.3207, 37.3704, 37.3856, 37.3845, 37.3695, 37.3407, 37.2817, 37.2124, 37.1364, 37.0547, 36.9514, 36.8478, 36.7477, 36.6527, 36.5465, 36.4502];
+	l_rom = [-6.1715, -6.117, -6.0199, -5.8784, -5.691, -5.4588, -5.1776, -4.8459, -4.4624, -4.0296, -3.5434, -3.0028, -2.408, -1.7637, -1.0667, -0.31824, 0.47919, 1.3179, 2.1989, 3.1186, 4.0724, 5.0499, 6.0517, 7.0737, 8.1109, 9.1527, 10.2008, 11.2518, 12.3017, 13.3403, 14.3718, 15.3946, 16.4062, 17.397, 18.3728, 19.3328, 20.2749, 21.189, 22.0824, 22.9548, 23.805, 24.6222, 25.4163, 26.1884, 26.9377, 27.6538, 28.3466, 29.0165, 29.6621, 30.2707, 30.8549, 31.416, 31.9538, 32.4557, 32.9354, 33.3942, 33.8315, 34.2332, 34.613, 34.9714, 35.3072, 35.6047, 35.8803, 36.136, 36.3716, 36.5725, 36.7541, 36.9172, 37.0604, 37.1663, 37.2525, 37.3207, 37.3704, 37.3856, 37.3845, 37.3695, 37.3407, 37.2817, 37.2124, 37.1364, 37.0547, 36.9514, 36.8478, 36.7477, 36.6527, 36.5465, 36.4502, 36.367, 36.2969, 36.2222, 36.1618, 36.1168, 36.085, 36.046, 36.0174, 35.9986, 35.9863, 35.9539, 35.8015, 35.6229, 35.3996, 35.1472, 34.8671, 34.5588, 34.2085, 33.8337, 33.4375, 33.021, 32.5716, 32.1055, 31.6253, 31.1309, 30.6092, 30.0759, 29.5333, 28.982, 28.4101, 27.8326, 27.2519, 26.6686, 26.0712, 25.4745, 24.881, 24.2907, 23.6928, 23.0991, 22.5103, 21.9251, 21.3314, 20.7416, 20.1566, 19.576, 18.9904, 18.4092, 17.8328, 17.26, 16.6806, 16.1042, 15.5317, 14.9625, 14.3888, 13.8194, 13.2551, 12.6957, 12.1344, 11.5788, 11.0296, 10.4863, 9.943, 9.4059, 8.8751, 8.35, 7.8256, 7.307, 6.7943, 6.2873, 5.782, 5.2825, 4.789, 4.3013, 3.8162, 3.3365, 2.8623, 2.3931, 1.9264, 1.4649, 1.0089, 0.55876, 0.11339, -0.32492, -0.75545, -1.1777, -1.592, -1.9966, -2.3906, -2.7733, -3.1449, -3.503, -3.8462, -4.1732, -4.483, -4.7732, -5.0422, -5.2883, -5.5107, -5.7056, -5.8703, -6.0025, -6.1013, -6.1635, -6.1873, -6.1715, -6.117, -6.0199, -5.8784, -5.691, -5.4588, -5.1776, -4.8459, -4.4624, -4.0296, -3.5434, -3.0028, -2.408, -1.7637, -1.0667, -0.31824, 0.47919, 1.3179, 2.1989, 3.1186, 4.0724, 5.0499, 6.0517, 7.0737, 8.1109, 9.1527, 10.2008, 11.2518, 12.3017, 13.3403, 14.3718, 15.3946, 16.4062, 17.397, 18.3728, 19.3328, 20.2749, 21.189, 22.0824, 22.9548, 23.805, 24.6222, 25.4163, 26.1884, 26.9377, 27.6538, 28.3466, 29.0165, 29.6621, 30.2707, 30.8549, 31.416, 31.9538, 32.4557, 32.9354, 33.3942, 33.8315, 34.2332, 34.613, 34.9714, 35.3072, 35.6047, 35.8803, 36.136, 36.3716, 36.5725, 36.7541, 36.9172, 37.0604, 37.1663, 37.2525, 37.3207, 37.3704, 37.3856, 37.3845, 37.3695, 37.3407, 37.2817, 37.2124, 37.1364, 37.0547, 36.9514, 36.8478, 36.7477, 36.6527, 36.5465, 36.4502, 36.367, 36.2969, 36.2222, 36.1618, 36.1168, 36.085, 36.046, 36.0174, 35.9986, 35.9863, 35.9539, 35.8015, 35.6229, 35.3996, 35.1472, 34.8671, 34.5588, 34.2085, 33.8337, 33.4375, 33.021, 32.5716, 32.1055, 31.6253, 31.1309, 30.6092, 30.0759, 29.5333, 28.982, 28.4101, 27.8326, 27.2519, 26.6686, 26.0712, 25.4745, 24.881, 24.2907, 23.6928, 23.0991, 22.5103, 21.9251, 21.3314, 20.7416, 20.1566, 19.576, 18.9904, 18.4092, 17.8328, 17.26, 16.6806, 16.1042, 15.5317, 14.9625, 14.3888, 13.8194, 13.2551, 12.6957, 12.1344, 11.5788, 11.0296, 10.4863, 9.943, 9.4059, 8.8751, 8.35, 7.8256, 7.307, 6.7943, 6.2873, 5.782, 5.2825, 4.789, 4.3013, 3.8162, 3.3365, 2.8623, 2.3931, 1.9264, 1.4649, 1.0089, 0.55876, 0.11339, -0.32492, -0.75545, -1.1777, -1.592, -1.9966, -2.3906, -2.7733, -3.1449, -3.503, -3.8462, -4.1732, -4.483, -4.7732, -5.0422, -5.2883, -5.5107, -5.7056, -5.8703, -6.0025, -6.1013, -6.1635, -6.1873];
+	session_speed = "slow"
+	
+	// Extracción de valores máximo y mínimo del ROM de ambas piernas		
 	var l_max = Math.max(...l_rom);
-    var r_max = Math.max(...r_rom);
-    console.log(r_max);
-    var r_min = Math.min(...r_rom);
-    var l_min = Math.min(...l_rom);
-    
-    
-	// load
+	var r_max = Math.max(...r_rom);
+	var r_min = Math.min(...r_rom);
+	var l_min = Math.min(...l_rom);
+	var l_total_rom = l_max - l_min;
+	var r_total_rom = r_max - r_min;
+	
+	
+	// Filtramos las señales de ROM (ventana = 5 muestras)
+	/*
+	for (i = 5; i < l_rom.length ; i++){
+	  l_rom[i] = (l_rom[i] + l_rom[i-1] + l_rom[i-2]  + l_rom[i-3] + l_rom[i-4])/5
+	  r_rom[i] = (r_rom[i] + r_rom[i-1] + r_rom[i-2] + l_rom[i-3] + l_rom[i-4])/5
+
+	}*/
+	
+	
+	// Calculo de la cadencia
+	let [n_HS_r, steps_right] = getToeIn(r_rom)
+	let [n_HS_l, steps_left] = getToeIn(l_rom)
+	var [n_TO_r, times] = getToeOff(r_rom)
+	var [n_TO_l, times] = getToeOff(l_rom)
+	let steps = steps_right + steps_left
+	let totalSeconds = r_rom.length/100;
+	console.log(totalSeconds)
+	let cadence = 60*steps/totalSeconds
+	document.getElementById("cadence").innerHTML = cadence.toFixed(2) + "  pasos/min"
+	// Calculo de la longitud de paso media
+	if(session_speed != "none"){
+	  if(session_speed == "slow"){
+	    var floatSpeed = 0.068
+	  } else if(session_speed == "normal"){
+	    var floatSpeed = 0.112
+	  } else if(session_speed == "high"){
+	    var floatSpeed = 0.113
+	  }
+	  let distancia = floatSpeed*totalSeconds
+	  document.getElementById("distancia_recorrida").innerHTML = distancia.toFixed(2) + " metros"
+	  
+	  // Longitud de paso Pierna derecha
+	  let samplesPaso_dcha = getSamplesPaso(n_HS_r, n_TO_r)
+	  let longitudPaso_dcha = samplesPaso_dcha/100*floatSpeed
+	  document.getElementById("longitud_paso_dcha").innerHTML = longitudPaso_dcha.toFixed(2) + " metros"
+	  // Longitud de paso Pierna derecha
+	  let samplesPaso_izq = getSamplesPaso(n_HS_l, n_TO_l)
+	  let longitudPaso_izq = samplesPaso_izq/100*floatSpeed
+	  document.getElementById("longitud_paso_izq").innerHTML = longitudPaso_izq.toFixed(2) + " metros"
+	  
+	  // Longitud de zancada
+	  let zancada = (n_HS_l[1] - n_HS_l[0])/100*floatSpeed
+	  document.getElementById("longitud_zancada").innerHTML = zancada.toFixed(2) + " metros"
+	  
+	  // Tiempo de doble apoyo. Tiempo transcurrido desde que se apoya un pie (toe in), hasta que se levanta el opuesto (toe off)
+	  // apoyo pie derecho -> n_HS_r
+	  // levantamiento pie izquierdo:
+	  var [n_TO_l, times] = getToeOff(l_rom)
+	  // Buscamos la muestra de toe Off pierna izquierda, inmediatamente posterior a la primera de toe In derecha
+	  let doubleSupportSamples = getDoubleSupportSamples(n_HS_r, n_TO_l)
+	  let doubleSupportTime = doubleSupportSamples/100
+	  document.getElementById("doubleSupport").innerHTML = doubleSupportTime.toFixed(2) + " segundos"
+	  
+	  // Tiempo de apoyo individual. Tiempo transcurrido desde que se levanta un pie (toe in), hasta que se apoya (toe in)   Coincide con el paso
+	  // apoyo pie derecho -> n_HS_r
+	  // levantamiento pie izquierdo -> n_TO_l
+	  
+	  // Buscamos la muestra de toe Off pierna izquierda, inmediatamente posterior a la primera de toe In derecha
+	  console.log(samplesPaso_dcha)
+	  let singleSupportTime = samplesPaso_dcha/100
+
+	  document.getElementById("singleSupport").innerHTML = singleSupportTime.toFixed(2) + " segundos"
+	  
+	} else {
+	  console.log(session_speed)
+	}
+	
+	// calculo de la media de peso soportado durante la sesión
 	let mean_load = 0;
 	for (i=0; i<load.length;i++){
 		mean_load = mean_load + load[i];
 	}
 	mean_load = Math.round(mean_load/load.length);
 	
+	// Añadimos datos al html. Si la sesión se ha hecho sin SW, los valores serán nulos (--)
 	if (r_rom.length != 0){
+		document.getElementById("l_Rom").innerHTML =  l_total_rom + "º";
 		document.getElementById("l_maxRom").innerHTML =  l_max + "º";
 		document.getElementById("l_minRom").innerHTML =  l_min + "º";
+		document.getElementById("r_Rom").innerHTML =  r_total_rom + "º";
 		document.getElementById("r_maxRom").innerHTML =  r_max + "º";
 		document.getElementById("r_minRom").innerHTML =  r_min + "º";
 		document.getElementById("supported_weight").innerHTML =  mean_load + "%";
 
 	} else {
+		document.getElementById("l_Rom").innerHTML =  "--";
 		document.getElementById("l_maxRom").innerHTML =  "--";
 		document.getElementById("l_minRom").innerHTML =  "--";
+		document.getElementById("r_Rom").innerHTML =  "--";
 		document.getElementById("r_maxRom").innerHTML =  "--";
 		document.getElementById("r_minRom").innerHTML =  "--";
 		document.getElementById("supported_weight").innerHTML =  "--";
 	}
 
-    
+	// show modal in which the charts will be drown
 	$("#modalviewsession").modal('show');
 
     
   }) 
   
+  // Esta función se desencadena en el momento en que se muestra el modal "modalviewsession". 
+  // Es necesario crear las gráficas después de mostrar el modal, y no antes, poeque sino quedarían por detrás del canvas, y no se vería nada.
   $('#modalviewsession').on('shown.bs.modal', function (event) {
 
-	var ctxl = document.getElementById('l_hip_chart').getContext('2d');
-	var ctxr = document.getElementById('r_hip_chart').getContext('2d');
+      // objetos canvas html
+      var ctxl = document.getElementById('l_hip_chart').getContext('2d');
+      var ctxr = document.getElementById('r_hip_chart').getContext('2d');
+      
 	
-	
-    
+    // opciones comunes para ambas gráficas
     var commonJointsOptions = {
       font: {
         size: 16
@@ -143,7 +225,7 @@ socket.on('datasessions', function(datasessions) {
       }
     };
   
-    // Joint instances
+    // Creación de ambas gráficas y especificaciuón de su configuración.
     var ctxrhipInstance = new Chart(ctxr, {
       type: 'line',
       data: {
@@ -158,8 +240,6 @@ socket.on('datasessions', function(datasessions) {
       },
       options: Object.assign({}, commonJointsOptions), 
     });
-    
-    console.log(ctxrhipInstance);
     
     var ctxlhipInstance = new Chart(ctxl, {
       type: 'line',
@@ -177,33 +257,38 @@ socket.on('datasessions', function(datasessions) {
       options: Object.assign({}, commonJointsOptions),   
     });
     
-    var time_labels = [];
-    console.log(r_rom)
-    for (i=0; i< r_rom.length ; i++){
-		// update labels
-		var segundos = Math.trunc(i/10);
-		var milisegundos = (i/10 - segundos)*100
-		var minutos = Math.trunc(segundos/60);
-		segundos = segundos - minutos*60; 
-		if(Math.trunc(milisegundos).toString().length == 1){
-			milisegundos = '00' + milisegundos;
-		} else if (Math.trunc(milisegundos).toString().length == 2){
-			milisegundos = '0' + milisegundos;
-		} else if (Math.trunc(milisegundos).toString().length == 0){
-			milisegundos = '000';
-		}
-		var label = minutos + '-' + segundos + '-' + milisegundos;
-		
-		ctxrhipInstance.data.labels.push(label)
-		ctxrhipInstance.data.datasets[0].data.push(r_rom[i])
-		ctxlhipInstance.data.labels.push(label)
-		ctxlhipInstance.data.datasets[0].data.push(l_rom[i])
-	}
-	ctxrhipInstance.update();
-	ctxlhipInstance.update();
+    // se añade cada una de las muestras de rom al dataset de la gráfica destinado a ello. 
+    
+	
+    for (i=0; i < r_rom.length ; i++){
+	    // calculo de la etiqueta 'minutos:segundos:milisegundos" que dará forma al eje X.
+	    var segundos = Math.trunc(i/100);
+	    var milisegundos = (i/100 - segundos)*1000
+	    var minutos = Math.trunc(segundos/60);
+	    segundos = segundos - minutos*60; 
+	    // Aseguramos que la variable milisegundos contiiene siempre 3 caracteres. 
+	    if(Math.trunc(milisegundos).toString().length == 1){
+		    milisegundos = '00' + milisegundos;
+	    } else if (Math.trunc(milisegundos).toString().length == 2){
+		    milisegundos = '0' + milisegundos;
+	    } else if (Math.trunc(milisegundos).toString().length == 0){
+		    milisegundos = '000';
+	    }
+	    var label = minutos + '-' + segundos + '-' + milisegundos;
+	    
+	    // Agregación de las muestras de ROM y label a los datasets de las gráfoicas
+	    ctxrhipInstance.data.labels.push(label)
+	    ctxrhipInstance.data.datasets[0].data.push(r_rom[i])
+	    ctxlhipInstance.data.labels.push(label)
+	    ctxlhipInstance.data.datasets[0].data.push(l_rom[i])
+      }
+      
+      // Actualizaciñón de las gráficas
+      ctxrhipInstance.update();
+      ctxlhipInstance.update();
 	
 	
-}); 
+  }); 
 	
 
 });
@@ -292,8 +377,9 @@ socket.on('datostabla', function(datas) {
             let dt = $('#sessionsList').DataTable();
 			let vars = dt.data().toArray();
 			let checkeds = dt.data().toArray().filter((data) => data.checked);
-			console.log(checkeds[0].idtable_session);
+			console.log(checkeds[0]);
 			n_session = checkeds[0].idtable_session;
+			session_speed = checkeds[0].gait_velocity;
 			
             
             
@@ -717,3 +803,62 @@ socket.on('therapistdata',function(datatherapist){
 $(document).ready(function() {
     //Asegurate que el id que le diste a la tabla sea igual al texto despues del simbolo #
   });
+  
+  
+/////////////////////       FUNCIONES RESUMEN ROM       /////////////////////
+function getToeIn(signal){
+  steps = 0
+  n_samples = [];
+  for (i=1; i < signal.length -1; i++){
+    // pierna derecha
+    if(signal[i] > signal[i-1]){
+      if(signal[i] > signal[i+1]){
+      // this is a maximum
+      steps = steps + 1
+      n_samples.push(i)
+      }
+    }
+  }
+  
+  return [n_samples, steps]
+  
+}
+
+function getToeOff(signal){
+  steps = 0
+  n_samples = [];
+  for (i=1; i < signal.length -1; i++){
+    // pierna derecha
+    if(signal[i] < signal[i-1]){
+      if(signal[i] < signal[i+1]){
+      // this is a maximum
+      steps = steps + 1
+      n_samples.push(i)
+      }
+    }
+  }
+  return [n_samples, steps]
+}
+
+function getDoubleSupportSamples(ToeIn_array, ToeOff_array){
+  ToeIn = ToeIn_array[0]
+  for (sample in ToeOff_array){
+    if(ToeOff_array[sample] > ToeIn){
+      var samples = ToeOff_array[sample]-ToeIn;
+      break
+    }
+  }
+  return samples
+}
+
+function getSamplesPaso(ToeIn_array, ToeOff_array){
+  ToeOff = ToeOff_array[0]
+  for (sample in ToeIn_array){
+    if(ToeIn_array[sample] > ToeOff){
+      var samples = ToeIn_array[sample]-ToeOff;
+      break
+    }
+  }
+  return samples
+}
+
