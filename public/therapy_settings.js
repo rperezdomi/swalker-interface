@@ -179,11 +179,11 @@ function setGaitVelocity(selectObject) {
     var gait_velocity = selectObject.value; 
     console.log(gait_velocity) 
     if (gait_velocity == "slow"){
-        document.getElementById("velocity_ms_value").innerHTML = "0.068 (m/s)";
+        document.getElementById("velocity_ms_value").innerHTML = "0.08 (m/s)";
     } else if (gait_velocity == "normal"){
-        document.getElementById("velocity_ms_value").innerHTML = "0.112 (m/s)";
+        document.getElementById("velocity_ms_value").innerHTML = "0.2 (m/s)";
     } else if (gait_velocity == "high"){
-        document.getElementById("velocity_ms_value").innerHTML = "0.113 (m/s)";
+        document.getElementById("velocity_ms_value").innerHTML = "0.3 (m/s)";
     } else if (gait_velocity == "none"){
         document.getElementById("velocity_ms_value").innerHTML = " - ";
     }
