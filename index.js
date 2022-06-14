@@ -907,6 +907,26 @@ io.on('connection', (socket) => {
         });
     })
     
+    // Cambio de la velocidad del swalker desde therapy monitoring
+    socket.on('monitoring:updateTherapySpeed', (speed) => {
+        var therapyConfigPath = path.join(__dirname, 'config','therapySettings.json');
+	therapy_speed = speed
+	
+	fs.readFile(therapyConfigPath, (err, data) => {
+		if (err) throw err;
+		let json_obj = JSON.parse(data);
+		console.log(json_obj)
+		json_obj["gait_velocity"] = therapy_speed;
+		console.log(json_obj)
+		fs.writeFileSync(therapyConfigPath, JSON.stringify(json_obj), function (err){
+			if (err) throw err;
+			console.log('Therapy settings re-saved!')
+		})
+	});
+	
+    })	
+
+	
     // SOLICITUD DEL MOVIMIENTO DEL SWALKER. ENVÍO DE COMANDOS AL ANDADOR (BT)  (therapy_monitoring.js)
     socket.on('traction:message', (data) => {
 	// data = {direction_char: .. }
@@ -990,7 +1010,7 @@ io.on('connection', (socket) => {
     // Update json therapy settings in session observations.(THERAPY_MONITORING.JS)
     // SE AÑADE LA VARIABLE OBSERVACIONES, ADQUIRIDA EN THERAOY_MONITORING, A LOS DATOS ALMACENADOS EN json EN THERAPYSETTINGS.
     socket.on('monitoring:save_settings', (obs) => {
-		console.log("update save_settings");
+	console.log("update save_settings");
         var therapyConfigPath = path.join(__dirname, 'config','therapySettings.json');
 
 		fs.readFile(therapyConfigPath, (err, data) => {

@@ -256,7 +256,6 @@
                     <div class="mb-3 d-flex centered">
                         <button style="margin:5px; background: #808080; border-color: #0968e4" class="btn btn-primary " value="off" id="connect_swalker" type="submit"> Conectar SWalker </button>
                         <button class="btn btn-primary " value="off" id="enable_emg" type="submit" style="margin:5px; background: #808080; border-color: #0968e4"> Conectar Delsys </button>
-                        
                         <button class="btn btn-primary " value="off" id="connect_BLE" type="submit" style = "margin:5px; background: #808080; border-color: #0968e4; display:none" > Test BLE </button>
                    
 
@@ -306,9 +305,12 @@
                                                 <h3>
                                                     Seleccione una dirección:
                                                 </h3>
+                                                <div>
+                                                
                                                 <h3 class="btn btn-secondary" id="direction_html">
                                                     Stop
                                                 </h3>
+                                                </div>
                                                 <div class="move_left icon">
                                                     <div id="move_left" class="arrow arrow_left"></div>
                                                 </div>
@@ -326,7 +328,16 @@
                                                         <div id="stop_id" class="rectangle" class></div>
                                                     </div>
                                                 </div>
+                                                
                                             </div>
+                                            <h3>
+                                                Velocidad: 
+                                            </h3>
+                                            <select class="btn  btn-primary" id="select_speed" class="form-control" onchange="selectGaitSpeed(this)" >
+                                                <option selected value="slow">Baja</option>
+                                                <option value="normal">Media</option>
+                                                <option value="high">Alta</option>
+                                            </select> 
                                         </div>
                                     </div>
                                 </div>

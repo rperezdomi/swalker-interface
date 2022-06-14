@@ -258,7 +258,7 @@ window.onload = function() {
 			type: 'line',
 			data: {
 				datasets: [{
-					label: 'EMG',s
+					label: 'EMG',
 					data: 0,
 					fill: false,
 					borderColor: '#FF2626',
@@ -1127,6 +1127,11 @@ socket.on('monitoring:show_therapy_settings', (data) => {
 	document.getElementById("gait_velocity").innerHTML = data.gait_velocity;
 	document.getElementById("Weight").innerHTML =  data.patient_weight; 
 	document.getElementById("LegLength").innerHTML =  data.leg_length;
+	console.log(data.gait_velocity)
+	
+	var select = document.getElementById("select_speed");
+	select.value = data.gait_velocity;
+	
 });
 
 socket.on('monitoring:connection_status', (data) => {
@@ -1228,6 +1233,14 @@ function hideDataset(dataset){
 
 function showDataset(dataset){
 	dataset.hidden = false;
+}
+
+function selectGaitSpeed(selectObject) {
+    var gait_velocity = selectObject.value; 
+    socket.emit("monitoring:updateTherapySpeed", {
+		speed: gait_velocity
+	});
+	console.log(gait_velocity)
 }
 
 
