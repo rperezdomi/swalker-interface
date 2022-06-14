@@ -908,9 +908,9 @@ io.on('connection', (socket) => {
     })
     
     // Cambio de la velocidad del swalker desde therapy monitoring
-    socket.on('monitoring:updateTherapySpeed', (speed) => {
+    socket.on('monitoring:updateTherapySpeed', (data) => {
         var therapyConfigPath = path.join(__dirname, 'config','therapySettings.json');
-	therapy_speed = speed
+	therapy_speed = data.speed
 	
 	fs.readFile(therapyConfigPath, (err, data) => {
 		if (err) throw err;
@@ -923,7 +923,7 @@ io.on('connection', (socket) => {
 			console.log('Therapy settings re-saved!')
 		})
 	});
-	
+	console.log(therapy_speed)
     })	
 
 	
